@@ -66,13 +66,24 @@ def optimize_scholarship(
             "expenses_to_claim": qualified_expenses
         }
 
-    # --- 4. OPTIMIZATION LOOP ---
+   # --- 4. OPTIMIZATION LOOP ---
+    
+    # NEW FIX: The Hard Floor for Mandatory Excess
+    # If scholarships exceed tuition, the excess MUST be taxable. 
+    # The loop cannot test values below this minimum.
+    min_inclusion = max(0, box_5_scholarship - box_1_tuition)
+    
     # STAGE 1: Coarse Scan
     coarse_step = 100
-    coarse_steps = list(range(0, int(box_5_scholarship), coarse_step))
+    # START the range at min_inclusion instead of 0
+    coarse_steps = list(range(int(min_inclusion), int(box_5_scholarship), coarse_step))
     coarse_steps.append(box_5_scholarship)
     
-    best_coarse = calculate_scenario(sch1_line_8r_current)
+    # We must also ensure the current baseline doesn't crash if the preparer 
+    # erroneously entered a number below the legal minimum.
+    safe_baseline_inclusion = max(sch1_line_8r_current, min_inclusion)
+    best_coarse = calculate_scenario(safe_baseline_inclusion)
+    
     for inc in coarse_steps:
         res = calculate_scenario(inc)
         if res['net_position'] > best_coarse['net_position']:
@@ -80,7 +91,8 @@ def optimize_scholarship(
             
     # STAGE 2: Fine Tuning
     best_coarse_val = best_coarse['inclusion']
-    start_fine = max(0, int(best_coarse_val) - coarse_step)
+    # Ensure the fine-tuning window also respects the minimum floor
+    start_fine = max(int(min_inclusion), int(best_coarse_val) - coarse_step)
     end_fine = min(int(box_5_scholarship), int(best_coarse_val) + coarse_step)
     
     best_final = best_coarse
