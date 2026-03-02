@@ -19,7 +19,6 @@ def optimize_scholarship(
     else:
         state_adjustment_factor = 0
         
-    # Since we use the Clean Slate method, the AGI entered IS the base income
     base_fed_income = form1040_line_11_agi 
 
     # --- 3. CALCULATION ENGINE ---
@@ -64,8 +63,6 @@ def optimize_scholarship(
         }
 
     # --- 4. CALCULATE THE SCENARIOS ---
-    naive_zero = calculate_scenario(0)
-    
     min_inclusion = max(0, box_5_scholarship - box_1_tuition)
     baseline = calculate_scenario(min_inclusion)
 
@@ -89,7 +86,7 @@ def optimize_scholarship(
         if res['net_position'] >= optimized['net_position']:
             optimized = res
 
-    return naive_zero, baseline, optimized
+    return baseline, optimized
 
 
 # --- STREAMLIT UI ---
@@ -101,7 +98,7 @@ with st.sidebar:
     nc_rate = st.slider("State Tax Rate (%)", min_value=0.0, max_value=7.0, value=4.25, step=0.01) / 100
     st.info("💡 **Workflow Protocol:** You MUST enter the client's Federal AGI and State Taxable Income *before* opening the 1098-T screen in TaxSlayer.")
 
-st.write("Enter the clean baseline numbers below to calculate the exact amount of scholarship to shift to taxable income to maximize the Lifetime Learning Credit.")
+st.write("Enter the clean baseline numbers below to calculate the exact amount of scholarship to shift to taxable income to maximize the Federal Education Credit.")
 
 col1, col2 = st.columns(2)
 with col1:
@@ -112,7 +109,7 @@ with col2:
     nc_taxable = st.number_input("Clean State Taxable", min_value=0, value=4020, step=100)
 
 if st.button("Calculate Optimization", type="primary"):
-    naive_zero, baseline, optimized = optimize_scholarship(box_1, box_5, agi, nc_taxable, nc_rate)
+    baseline, optimized = optimize_scholarship(box_1, box_5, agi, nc_taxable, nc_rate)
     
     savings = baseline['tax_burden'] - optimized['tax_burden']
     
@@ -129,14 +126,14 @@ if st.button("Calculate Optimization", type="primary"):
             **Do not** enter the 1098-T as printed, or TaxSlayer will override this strategy. You must manually force these numbers into the software:
             
             **Step 1: Enter the Taxable Income**
-            * Go to `Federal Section > Income > Less Common Income > Other Compensation > Scholarships and Grants`
+            * Go to `Federal Section > Income > Other Income > Other Compensation > Scholarships and Grants`
             * Enter exactly: **${optimized['inclusion']:,.0f}**
             
             **Step 2: Enter the Education Credit**
             * Go to `Federal Section > Deductions > Credits > Education Credits`
             * Fill out the qualifying questions. On the 1098-T entry screen:
-            * For **Tuition Paid** (Box 1), enter: **${optimized['expenses_to_claim']:,.0f}**
-            * For **Scholarships** (Box 5), enter: **$0** *(Leave blank to prevent TaxSlayer from double-subtracting)*
+            * For **Tuition Paid**, enter: **${optimized['expenses_to_claim']:,.0f}**
+            * For **Grants and Scholarships**, enter: **$0** *(Leave blank to prevent TaxSlayer from double-subtracting)*
             """)
             
         with c2:
@@ -146,40 +143,31 @@ if st.button("Calculate Optimization", type="primary"):
             added_tax = (optimized['fed_tax'] + optimized['nc_tax']) - (baseline['fed_tax'] + baseline['nc_tax'])
             added_credit = optimized['credit'] - baseline['credit']
             
-            # Formatting the output based on whether there was mandatory taxable scholarship or not
             if baseline['inclusion'] > 0:
                 st.markdown(f"""
-                *"Because your scholarship was larger than your tuition, the IRS **required** us to report ${baseline['inclusion']:,.0f} as taxable income. If we stopped there, your total tax burden would have been ${baseline['tax_burden']:,.0f}.*
-                
-                *However, we used an IRS-approved strategy to lower your bill. We **voluntarily** reported an additional **${added_income:,.0f}** of your scholarship as income.* *While this temporarily increased your taxes by **${added_tax:,.0f}**, doing so unlocked an Education Credit of **${added_credit:,.0f}**. That credit completely paid for the tax increase and put an extra **${savings:,.0f}** in your pocket!"*
+                > "Because your scholarship was larger than your tuition, the IRS **required** us to report **${baseline['inclusion']:,.0f}** as taxable income. If we handled your return the ordinary way, your total tax burden would have been **${baseline['tax_burden']:,.0f}**.
+                > 
+                > However, we used an IRS-approved strategy to lower your bill. We **voluntarily** reported an additional **${added_income:,.0f}** of your scholarship as income. While this temporarily increased your taxes by **${added_tax:,.0f}**, doing so unlocked a Federal Education Credit of **${added_credit:,.0f}**. That credit completely paid for the tax increase and put an extra **${savings:,.0f}** in your pocket!"
                 """)
             else:
                 st.markdown(f"""
-                *"If we handled your 1098-T the standard way, your total tax burden would have been ${baseline['tax_burden']:,.0f}.*
-                
-                *However, we used an IRS-approved strategy to lower your bill. We **voluntarily** reported **${added_income:,.0f}** of your tax-free scholarship as taxable income.* *While this temporarily increased your taxes by **${added_tax:,.0f}**, doing so unlocked an Education Credit of **${added_credit:,.0f}**. That credit completely paid for the tax increase and put an extra **${savings:,.0f}** in your pocket!"*
+                > "If we handled your 1098-T the ordinary way, your total tax burden would have been **${baseline['tax_burden']:,.0f}**.
+                > 
+                > However, we used an IRS-approved strategy to lower your bill. We **voluntarily** reported **${added_income:,.0f}** of your tax-free scholarship as taxable income. While this temporarily increased your taxes by **${added_tax:,.0f}**, doing so unlocked a Federal Education Credit of **${added_credit:,.0f}**. That credit completely paid for the tax increase and put an extra **${savings:,.0f}** in your pocket!"
                 """)
 
         st.divider()
         
         st.subheader("📊 The Math Breakdown")
         
-        if naive_zero['inclusion'] == baseline['inclusion']:
-            df = pd.DataFrame({
-                "Metric": ["Taxable Scholarship", "Federal AGI", "Federal Tax", "State Tax", "Education Credit", "TOTAL NET TAX BURDEN"],
-                "1. Baseline (Doing Nothing)": [f"${baseline['inclusion']:,.0f}", f"${baseline['agi']:,.0f}", f"${baseline['fed_tax']:,.0f}", f"${baseline['nc_tax']:,.0f}", f"${baseline['credit']:,.0f}", f"${baseline['tax_burden']:,.0f}"],
-                "2. Optimized Strategy": [f"${optimized['inclusion']:,.0f}", f"${optimized['agi']:,.0f}", f"${optimized['fed_tax']:,.0f}", f"${optimized['nc_tax']:,.0f}", f"${optimized['credit']:,.0f}", f"${optimized['tax_burden']:,.0f}"]
-            })
-        else:
-            df = pd.DataFrame({
-                "Metric": ["Taxable Scholarship", "Federal AGI", "Federal Tax", "State Tax", "Education Credit", "TOTAL NET TAX BURDEN"],
-                "1. If $0 Was Taxable (Illegal)": [f"${naive_zero['inclusion']:,.0f}", f"${naive_zero['agi']:,.0f}", f"${naive_zero['fed_tax']:,.0f}", f"${naive_zero['nc_tax']:,.0f}", f"${naive_zero['credit']:,.0f}", f"${naive_zero['tax_burden']:,.0f}"],
-                "2. Mandatory Minimum": [f"${baseline['inclusion']:,.0f}", f"${baseline['agi']:,.0f}", f"${baseline['fed_tax']:,.0f}", f"${baseline['nc_tax']:,.0f}", f"${baseline['credit']:,.0f}", f"${baseline['tax_burden']:,.0f}"],
-                "3. Optimized Strategy": [f"${optimized['inclusion']:,.0f}", f"${optimized['agi']:,.0f}", f"${optimized['fed_tax']:,.0f}", f"${optimized['nc_tax']:,.0f}", f"${optimized['credit']:,.0f}", f"${optimized['tax_burden']:,.0f}"]
-            })
+        df = pd.DataFrame({
+            "Metric": ["Taxable Scholarship", "Federal AGI", "Federal Tax", "State Tax", "Federal Education Credit", "TOTAL NET TAX BURDEN"],
+            "Ordinary Reporting": [f"${baseline['inclusion']:,.0f}", f"${baseline['agi']:,.0f}", f"${baseline['fed_tax']:,.0f}", f"${baseline['nc_tax']:,.0f}", f"${baseline['credit']:,.0f}", f"${baseline['tax_burden']:,.0f}"],
+            "Optimized Strategy": [f"${optimized['inclusion']:,.0f}", f"${optimized['agi']:,.0f}", f"${optimized['fed_tax']:,.0f}", f"${optimized['nc_tax']:,.0f}", f"${optimized['credit']:,.0f}", f"${optimized['tax_burden']:,.0f}"]
+        })
             
         st.table(df)
-        st.caption("*(Total Net Tax Burden = Federal Tax + State Tax - Education Credit. A lower number means more money in the client's pocket.)*")
+        st.caption("*(Total Net Tax Burden = Federal Tax + State Tax - Federal Education Credit. A lower number means more money in the client's pocket.)*")
         
     else:
-        st.info("✅ **No Optimization Available.** The mandatory baseline is already the best mathematical outcome for this client.")
+        st.info("✅ **No Optimization Available.** Ordinary reporting is already the best mathematical outcome for this client.")
