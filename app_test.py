@@ -136,7 +136,7 @@ if st.button("Calculate Optimization", type="primary"):
             * For **Grants and Scholarships**, enter: **$0** *(Leave blank to prevent TaxSlayer from double-subtracting)*
             """)
             
-    with c2:
+        with c2:
             st.subheader("🗣️ Explanation for the Client")
             
             added_income = optimized['inclusion'] - baseline['inclusion']
