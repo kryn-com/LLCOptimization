@@ -136,7 +136,7 @@ if st.button("Calculate Optimization", type="primary"):
             * For **Grants and Scholarships**, enter: **$0** *(Leave blank to prevent TaxSlayer from double-subtracting)*
             """)
             
-        with c2:
+    with c2:
             st.subheader("🗣️ Explanation for the Client")
             
             added_income = optimized['inclusion'] - baseline['inclusion']
@@ -145,15 +145,15 @@ if st.button("Calculate Optimization", type="primary"):
             
             if baseline['inclusion'] > 0:
                 st.markdown(f"""
-                > "Because your scholarship was larger than your tuition, the IRS **required** us to report **${baseline['inclusion']:,.0f}** as taxable income. If we handled your return the ordinary way, your total tax burden would have been **${baseline['tax_burden']:,.0f}**.
+                > "Because your scholarship was larger than your tuition, the IRS **required** us to report **\${baseline['inclusion']:,.0f}** as taxable income. If we handled your return the ordinary way, your total tax burden would have been **\${baseline['tax_burden']:,.0f}**.
                 > 
-                > However, we used an IRS-approved strategy to lower your bill. We **voluntarily** reported an additional **${added_income:,.0f}** of your scholarship as income. While this temporarily increased your taxes by **${added_tax:,.0f}**, doing so unlocked a Federal Education Credit of **${added_credit:,.0f}**. That credit completely paid for the tax increase and put an extra **${savings:,.0f}** in your pocket!"
+                > However, we used an IRS-approved strategy to lower your bill. We **voluntarily** reported an additional **\${added_income:,.0f}** of your scholarship as income. While this temporarily increased your taxes by **\${added_tax:,.0f}**, doing so unlocked a Federal Education Credit of **\${added_credit:,.0f}**. That credit completely paid for the tax increase and put an extra **\${savings:,.0f}** in your pocket!"
                 """)
             else:
                 st.markdown(f"""
-                > "If we handled your 1098-T the ordinary way, your total tax burden would have been **${baseline['tax_burden']:,.0f}**.
+                > "If we handled your 1098-T the ordinary way, your total tax burden would have been **\${baseline['tax_burden']:,.0f}**.
                 > 
-                > However, we used an IRS-approved strategy to lower your bill. We **voluntarily** reported **${added_income:,.0f}** of your tax-free scholarship as taxable income. While this temporarily increased your taxes by **${added_tax:,.0f}**, doing so unlocked a Federal Education Credit of **${added_credit:,.0f}**. That credit completely paid for the tax increase and put an extra **${savings:,.0f}** in your pocket!"
+                > However, we used an IRS-approved strategy to lower your bill. We **voluntarily** reported **\${added_income:,.0f}** of your tax-free scholarship as taxable income. While this temporarily increased your taxes by **\${added_tax:,.0f}**, doing so unlocked a Federal Education Credit of **\${added_credit:,.0f}**. That credit completely paid for the tax increase and put an extra **\${savings:,.0f}** in your pocket!"
                 """)
 
         st.divider()
