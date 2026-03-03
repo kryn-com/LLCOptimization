@@ -65,7 +65,8 @@ def optimize_scholarship(
             "nc_tax": nc_tax,
             "credit": usable_credit,
             "agi": new_agi,
-            "ts_box_5_entry": tax_free_scholarship 
+            "ts_box_5_entry": tax_free_scholarship,
+            "expenses_to_claim": qualified_expenses
         }
 
     # --- 4. CALCULATE THE SCENARIOS ---
@@ -120,6 +121,7 @@ if st.button("Calculate Optimization", type="primary"):
     baseline, optimized = optimize_scholarship(box_1, addl_qee, box_5, agi, nc_taxable, nc_rate)
     
     savings = baseline['tax_burden'] - optimized['tax_burden']
+    total_qee = box_1 + addl_qee
     
     st.divider()
     
@@ -139,8 +141,8 @@ if st.button("Calculate Optimization", type="primary"):
             * Go to `Federal Section > Deductions > Credits > Education Credits`
             * Fill out the qualifying questions. On the 1098-T entry screen, enter these exact values:
             * **Tuition Paid:** **\${box_1:,.0f}** *(Unaltered)*
-            * **Additional Expenses:** **\${addl_qee:,.0f}** *(Unaltered)*
-            * **Grants and Scholarships:** **\${optimized['ts_box_5_entry']:,.0f}** *(This is the Tax-Free portion. TaxSlayer will automatically subtract this from the QEE to calculate the correct credit)*
+            * **Grants and Scholarships:** **\${optimized['ts_box_5_entry']:,.0f}** *(This is the Tax-Free portion. TaxSlayer subtracts this from your expenses to find the credit base)*
+            * **Other Qualified Expenses:** **\${addl_qee:,.0f}** *(Unaltered)*
             """)
             
         with c2:
@@ -152,13 +154,13 @@ if st.button("Calculate Optimization", type="primary"):
             
             if baseline['inclusion'] > 0:
                 st.markdown(f"""
-                > "Because your scholarship was larger than your tuition, the IRS **required** us to report **\${baseline['inclusion']:,.0f}** as taxable income. If we handled your return the ordinary way, your total tax burden would have been **\${baseline['tax_burden']:,.0f}**.
+                > "Because your total scholarship (**\${box_5:,.0f}**) was larger than your combined tuition and required educational expenses (**\${total_qee:,.0f}**), the IRS **required** us to report the difference (**\${baseline['inclusion']:,.0f}**) as taxable income. If we stopped there, your total tax burden would have been **\${baseline['tax_burden']:,.0f}**.
                 > 
                 > However, we used an IRS-approved strategy to lower your bill. We **voluntarily** reported an additional **\${added_income:,.0f}** of your scholarship as income. While this temporarily increased your taxes by **\${added_tax:,.0f}**, doing so unlocked a Federal Education Credit of **\${added_credit:,.0f}**. That credit completely paid for the tax increase and put an extra **\${savings:,.0f}** in your pocket!"
                 """)
             else:
                 st.markdown(f"""
-                > "If we handled your 1098-T the ordinary way, your total tax burden would have been **\${baseline['tax_burden']:,.0f}**.
+                > "Normally, because your tuition and educational expenses (**\${total_qee:,.0f}**) were higher than your scholarship (**\${box_5:,.0f}**), none of your scholarship would be taxed. If we handled your return the ordinary way, your total tax burden would have been **\${baseline['tax_burden']:,.0f}**.
                 > 
                 > However, we used an IRS-approved strategy to lower your bill. We **voluntarily** reported **\${added_income:,.0f}** of your tax-free scholarship as taxable income. While this temporarily increased your taxes by **\${added_tax:,.0f}**, doing so unlocked a Federal Education Credit of **\${added_credit:,.0f}**. That credit completely paid for the tax increase and put an extra **\${savings:,.0f}** in your pocket!"
                 """)
@@ -168,9 +170,39 @@ if st.button("Calculate Optimization", type="primary"):
         st.subheader("📊 The Math Breakdown")
         
         df = pd.DataFrame({
-            "Metric": ["Taxable Scholarship", "Federal Tax", "State Tax", "Federal Education Credit", "TOTAL NET TAX BURDEN"],
-            "Ordinary Reporting": [f"${baseline['inclusion']:,.0f}", f"${baseline['fed_tax']:,.0f}", f"${baseline['nc_tax']:,.0f}", f"${baseline['credit']:,.0f}", f"${baseline['tax_burden']:,.0f}"],
-            "Optimized Strategy": [f"${optimized['inclusion']:,.0f}", f"${optimized['fed_tax']:,.0f}", f"${optimized['nc_tax']:,.0f}", f"${optimized['credit']:,.0f}", f"${optimized['tax_burden']:,.0f}"]
+            "Metric": [
+                "Total Scholarship", 
+                "Total Tuition & QEE", 
+                "Tax-Free Scholarship (Offsets QEE)", 
+                "Taxable Scholarship (Added to Income)", 
+                "Net QEE Used for Credit",
+                "Federal Tax", 
+                "State Tax", 
+                "Federal Education Credit", 
+                "TOTAL NET TAX BURDEN"
+            ],
+            "Ordinary Reporting": [
+                f"${box_5:,.0f}", 
+                f"${total_qee:,.0f}", 
+                f"${(box_5 - baseline['inclusion']):,.0f}", 
+                f"${baseline['inclusion']:,.0f}", 
+                f"${baseline['expenses_to_claim']:,.0f}",
+                f"${baseline['fed_tax']:,.0f}", 
+                f"${baseline['nc_tax']:,.0f}", 
+                f"${baseline['credit']:,.0f}", 
+                f"${baseline['tax_burden']:,.0f}"
+            ],
+            "Optimized Strategy": [
+                f"${box_5:,.0f}", 
+                f"${total_qee:,.0f}", 
+                f"${optimized['ts_box_5_entry']:,.0f}", 
+                f"${optimized['inclusion']:,.0f}", 
+                f"${optimized['expenses_to_claim']:,.0f}",
+                f"${optimized['fed_tax']:,.0f}", 
+                f"${optimized['nc_tax']:,.0f}", 
+                f"${optimized['credit']:,.0f}", 
+                f"${optimized['tax_burden']:,.0f}"
+            ]
         })
             
         st.table(df)
