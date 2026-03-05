@@ -185,16 +185,17 @@ with st.sidebar:
 
 st.markdown("<div class='fake-header'>1. Education Documents</div>", unsafe_allow_html=True)
 
+# Using Fixed-Height Divs to Guarantee Vertical Alignment
 col1, col2, col3, col4 = st.columns(4)
 with col1:
-    st.markdown("**1098-T Box 1**<br><span style='font-size:0.9em; font-weight:normal;'>*(Tuition Paid)*</span>", unsafe_allow_html=True)
-    box_1_in = st.number_input("box_1", min_value=0, value=0, step=100, label_visibility="collapsed")
+    st.markdown("<div style='height: 3.5rem;'><b>1098-T Box 1</b><br><span style='font-size:0.9em; font-weight:normal;'><i>(Tuition Paid)</i></span></div>", unsafe_allow_html=True)
+    box_1_in = st.number_input("box_1", min_value=0.0, value=0.0, step=100.0, format="%.0f", label_visibility="collapsed")
 with col2:
-    st.markdown("**1098-T Box 5**<br><span style='font-size:0.9em; font-weight:normal;'>*(Total Scholarship)*</span>", unsafe_allow_html=True)
-    box_5_in = st.number_input("box_5", min_value=0, value=0, step=100, label_visibility="collapsed")
+    st.markdown("<div style='height: 3.5rem;'><b>1098-T Box 5</b><br><span style='font-size:0.9em; font-weight:normal;'><i>(Total Scholarship)</i></span></div>", unsafe_allow_html=True)
+    box_5_in = st.number_input("box_5", min_value=0.0, value=0.0, step=100.0, format="%.0f", label_visibility="collapsed")
 with col3:
-    st.markdown("**Other Qualified Expenses**<br><span style='font-size:0.9em; font-weight:normal;'>*(Books, Supplies, etc.)*</span>", unsafe_allow_html=True)
-    addl_qee_in = st.number_input("addl_qee", min_value=0, value=0, step=100, label_visibility="collapsed")
+    st.markdown("<div style='height: 3.5rem;'><b>Other Qualified Expenses</b><br><span style='font-size:0.9em; font-weight:normal;'><i>(Books, Supplies, etc.)</i></span></div>", unsafe_allow_html=True)
+    addl_qee_in = st.number_input("addl_qee", min_value=0.0, value=0.0, step=100.0, format="%.0f", label_visibility="collapsed")
 with col4:
     st.empty()
 
@@ -202,25 +203,26 @@ st.markdown("<div class='fake-header'>2. TaxSlayer Current Status</div>", unsafe
 
 col5, col6, col7, col8 = st.columns(4)
 with col5:
-    st.markdown("**Federal AGI**<br><span style='font-size:0.9em; font-weight:normal;'>*(Form 1040, Line 11)*</span><br>&nbsp;", unsafe_allow_html=True)
-    agi_in = st.number_input("agi", min_value=0, value=0, step=100, label_visibility="collapsed")
+    st.markdown("<div style='height: 4.5rem;'><b>Federal AGI</b><br><span style='font-size:0.9em; font-weight:normal;'><i>(Form 1040, Line 11)</i></span></div>", unsafe_allow_html=True)
+    agi_in = st.number_input("agi", min_value=0.0, value=0.0, step=100.0, format="%.0f", label_visibility="collapsed")
 with col6:
-    st.markdown("**State Taxable Income**<br><span style='font-size:0.9em; font-weight:normal;'>*(NC D-400, Line 14)*</span><br>&nbsp;", unsafe_allow_html=True)
-    nc_taxable_in = st.number_input("nc_taxable", min_value=0, value=0, step=100, label_visibility="collapsed")
+    st.markdown("<div style='height: 4.5rem;'><b>State Taxable Income</b><br><span style='font-size:0.9em; font-weight:normal;'><i>(NC D-400, Line 14)</i></span></div>", unsafe_allow_html=True)
+    nc_taxable_in = st.number_input("nc_taxable", min_value=0.0, value=0.0, step=100.0, format="%.0f", label_visibility="collapsed")
 with col7:
-    st.markdown("**Taxable Scholarship** *(Line 8r)*<br><span style='font-size:0.85em; font-weight:normal;'>*Optional: Only if 1098-T entered to TaxSlayer*</span>", unsafe_allow_html=True)
-    line_8r_in = st.number_input("line_8r", min_value=0, value=0, step=100, label_visibility="collapsed")
+    st.markdown("<div style='height: 4.5rem;'><b>Taxable Scholarship</b> <i>(Line 8r)</i><br><span style='font-size:0.85em; font-weight:normal;'><i>*Optional: Only if 1098-T entered to TaxSlayer*</i></span></div>", unsafe_allow_html=True)
+    line_8r_in = st.number_input("line_8r", min_value=0.0, value=0.0, step=100.0, format="%.0f", label_visibility="collapsed")
 with col8:
     st.empty()
 
 if st.button("Calculate Optimization", type="primary"):
     
-    box_1 = int(box_1_in)
-    box_5 = int(box_5_in)
-    addl_qee = int(addl_qee_in)
-    agi = int(agi_in)
-    nc_taxable = int(nc_taxable_in)
-    line_8r = int(line_8r_in)
+    # Properly round any decimals to the nearest whole dollar
+    box_1 = int(round(box_1_in)) if box_1_in else 0
+    box_5 = int(round(box_5_in)) if box_5_in else 0
+    addl_qee = int(round(addl_qee_in)) if addl_qee_in else 0
+    agi = int(round(agi_in)) if agi_in else 0
+    nc_taxable = int(round(nc_taxable_in)) if nc_taxable_in else 0
+    line_8r = int(round(line_8r_in)) if line_8r_in else 0
     
     if box_1 == 0 and box_5 == 0:
         st.warning("Please enter the 1098-T information to begin.")
@@ -240,7 +242,6 @@ if st.button("Calculate Optimization", type="primary"):
             with c1:
                 st.markdown("<h3 style='margin-top:0;'>🛠️ TaxSlayer Instructions</h3>", unsafe_allow_html=True)
                 
-                # Built line-by-line to avoid multiline string formatting bugs
                 instructions = (
                     "**Step 1: Enter the Taxable Income**\n"
                     "* Go to `Federal Section > Income > Other Income > Other Compensation > Scholarships and Grants`\n"
@@ -291,7 +292,6 @@ if st.button("Calculate Optimization", type="primary"):
             base_credit_str = f"-${baseline['credit']:,.0f}" if baseline['credit'] > 0 else "$0"
             opt_credit_str = f"-${optimized['credit']:,.0f}" if optimized['credit'] > 0 else "$0"
             
-            # Built purely via parenthesis continuation to bypass ANY python triple quote bugs
             ui_table = (
                 '<table class="ui-math-table">'
                 '<tr><th>Metric</th><th>Standard TaxSlayer Entry</th><th>After Optimization</th></tr>'
