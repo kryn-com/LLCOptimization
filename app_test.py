@@ -165,8 +165,11 @@ def optimize_scholarship(
 
     optimized = baseline
     
-    # Iterate exactly dollar-by-dollar to catch the jagged $49 peak of the $50 bucket
-    for inc in range(int(min_inclusion), int(box_5_scholarship) + 1):
+    # SAFETY VALVE: Cap the max inclusion shift to $10,000 above the baseline
+    max_inclusion = min(int(box_5_scholarship), int(min_inclusion) + 10000)
+    
+    # Iterate exactly dollar-by-dollar up to the hard cap
+    for inc in range(int(min_inclusion), max_inclusion + 1):
         res = calculate_scenario(inc)
         # Using >= ensures we push up to the highest scholarship amount that maintains the maximum savings
         if res['net_position'] >= optimized['net_position']:
