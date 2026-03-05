@@ -154,7 +154,7 @@ def optimize_scholarship(
             "nc_tax": nc_tax,
             "credit": usable_credit,
             "agi": new_agi,
-            "fed_taxable": fed_taxable, # Added to track the $49 target if needed
+            "fed_taxable": fed_taxable, 
             "ts_box_5_entry": tax_free_scholarship,
             "expenses_to_claim": qualified_expenses
         }
@@ -307,13 +307,7 @@ if st.button("Calculate Optimization", type="primary"):
             )
             
             st.markdown(ui_table, unsafe_allow_html=True)
-            
-            # Subtle check to show if we nailed the bucket target
-            remainder = optimized['fed_taxable'] % 50
-            if remainder in [49, 99]:
-                st.markdown(f"<p style='font-size:1.1em; font-weight:bold; margin-top:10px;'>Optimization was successful and resulted in a ${savings:,.0f} net tax savings. <i>(Engine hit ${remainder} target)</i></p>", unsafe_allow_html=True)
-            else:
-                st.markdown(f"<p style='font-size:1.1em; font-weight:bold; margin-top:10px;'>Optimization was successful and resulted in a ${savings:,.0f} net tax savings.</p>", unsafe_allow_html=True)
+            st.markdown(f"<p style='font-size:1.1em; font-weight:bold; margin-top:10px;'>Optimization was successful and resulted in a ${savings:,.0f} net tax savings.</p>", unsafe_allow_html=True)
             
             # --- GENERATE PRINTABLE HTML REPORT ---
             html_report = (
