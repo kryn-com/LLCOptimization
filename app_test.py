@@ -1,7 +1,8 @@
 import streamlit as st
 import pandas as pd
+import streamlit.components.v1 as components
 
-# --- CUSTOM CSS FOR UI STYLING ---
+# --- CUSTOM CSS FOR UI STYLING & DARK MODE SUPPORT ---
 st.markdown("""
 <style>
 /* Increase font sizes for labels and inputs */
@@ -21,7 +22,7 @@ div[data-testid="stNumberInputContainer"]::before {
     left: 10px;
     top: 50%;
     transform: translateY(-50%);
-    color: #666;
+    color: #888;
     font-size: 1.15rem;
     z-index: 1;
 }
@@ -31,14 +32,25 @@ div[data-testid="stSlider"] div[data-testid="stNumberInputContainer"]::before {
     content: "";
 }
 
-/* Make blockquotes look unified */
-blockquote {
-    border-left: 4px solid #cccccc;
-    padding-left: 1rem;
-    color: #555555;
-    background-color: #f9f9f9;
-    padding: 10px;
-    border-radius: 5px;
+/* Custom UI Table Styling */
+.ui-math-table {
+    width: 100%;
+    max-width: 700px;
+    border-collapse: collapse;
+    margin-bottom: 1rem;
+}
+.ui-math-table th, .ui-math-table td {
+    border: 1px solid #555;
+    padding: 8px 12px;
+    text-align: right;
+}
+.ui-math-table th:first-child, .ui-math-table td:first-child {
+    text-align: left;
+    font-weight: bold;
+    width: 50%;
+}
+.ui-math-table .total-row {
+    background-color: rgba(128, 128, 128, 0.1);
 }
 </style>
 """, unsafe_allow_html=True)
@@ -151,40 +163,40 @@ with st.sidebar:
     nc_rate = st.slider("State Tax Rate (%)", min_value=0.0, max_value=7.0, value=4.25, step=0.01) / 100
     st.success("💡 **Workflow:** You can enter the clean baseline before touching the 1098-T, OR enter the current numbers after TaxSlayer has processed the 1098-T. The app handles both!")
 
-# Using raw HTML to prevent Streamlit from creating tab-stealing anchor links
-st.markdown("<h3 style='margin-top:1rem;'>1. Education Documents</h3>", unsafe_allow_html=True)
+# Removed st.subheader to prevent anchor links
+st.markdown("<h3 style='margin-top:1rem; margin-bottom:1rem;'>1. Education Documents</h3>", unsafe_allow_html=True)
 
+# Step removed from inputs to kill the plus/minus buttons
 col1, col2, col3, col4 = st.columns(4)
 with col1:
     st.markdown("**1098-T Box 1**<br><span style='font-size:0.9em; font-weight:normal;'>*(Tuition Paid)*</span>", unsafe_allow_html=True)
-    box_1_in = st.number_input("box_1", value=None, step=100, label_visibility="collapsed")
+    box_1_in = st.number_input("box_1", value=None, label_visibility="collapsed")
 with col2:
     st.markdown("**1098-T Box 5**<br><span style='font-size:0.9em; font-weight:normal;'>*(Total Scholarship)*</span>", unsafe_allow_html=True)
-    box_5_in = st.number_input("box_5", value=None, step=100, label_visibility="collapsed")
+    box_5_in = st.number_input("box_5", value=None, label_visibility="collapsed")
 with col3:
     st.markdown("**Other Qualified Expenses**<br><span style='font-size:0.9em; font-weight:normal;'>*(Books, Supplies, etc.)*</span>", unsafe_allow_html=True)
-    addl_qee_in = st.number_input("addl_qee", value=None, step=100, label_visibility="collapsed")
+    addl_qee_in = st.number_input("addl_qee", value=None, label_visibility="collapsed")
 with col4:
     st.empty()
 
-st.markdown("<h3 style='margin-top:1rem;'>2. TaxSlayer Current Status</h3>", unsafe_allow_html=True)
+st.markdown("<h3 style='margin-top:1rem; margin-bottom:1rem;'>2. TaxSlayer Current Status</h3>", unsafe_allow_html=True)
 
 col5, col6, col7, col8 = st.columns(4)
 with col5:
     st.markdown("**Federal AGI**<br><span style='font-size:0.9em; font-weight:normal;'>*(Form 1040, Line 11)*</span><br>&nbsp;", unsafe_allow_html=True)
-    agi_in = st.number_input("agi", value=None, step=100, label_visibility="collapsed")
+    agi_in = st.number_input("agi", value=None, label_visibility="collapsed")
 with col6:
     st.markdown("**State Taxable Income**<br><span style='font-size:0.9em; font-weight:normal;'>*(NC D-400, Line 14)*</span><br>&nbsp;", unsafe_allow_html=True)
-    nc_taxable_in = st.number_input("nc_taxable", value=None, step=100, label_visibility="collapsed")
+    nc_taxable_in = st.number_input("nc_taxable", value=None, label_visibility="collapsed")
 with col7:
-    st.markdown("**Taxable Scholarship** *(Line 8r)*<br><span style='font-size:0.85em; font-weight:normal;'>*Optional: Only if 1098-T is already entered*</span>", unsafe_allow_html=True)
-    line_8r_in = st.number_input("line_8r", value=None, step=100, label_visibility="collapsed")
+    st.markdown("**Taxable Scholarship** *(Line 8r)*<br><span style='font-size:0.85em; font-weight:normal;'>*Optional: Only if 1098-T entered*</span><br>&nbsp;", unsafe_allow_html=True)
+    line_8r_in = st.number_input("line_8r", value=None, label_visibility="collapsed")
 with col8:
     st.empty()
 
 if st.button("Calculate Optimization", type="primary"):
     
-    # Coalesce None values to 0 to prevent math errors
     box_1 = box_1_in or 0
     box_5 = box_5_in or 0
     addl_qee = addl_qee_in or 0
@@ -203,83 +215,69 @@ if st.button("Calculate Optimization", type="primary"):
         st.divider()
         
         if savings > 5:
-            st.success(f"### 💰 Optimization Successful! You saved the client **${savings:,.0f}**")
+            st.success(f"### 💰 Optimization Successful! You saved the client ${savings:,.0f}")
             
             c1, c2 = st.columns(2)
             
             with c1:
-                st.subheader("🛠️ TaxSlayer Instructions")
+                st.markdown("<h3 style='margin-top:0;'>🛠️ TaxSlayer Instructions</h3>", unsafe_allow_html=True)
                 st.markdown(f"""
                 **Step 1: Enter the Taxable Income**
                 * Go to `Federal Section > Income > Other Income > Other Compensation > Scholarships and Grants`
-                * Enter exactly: **\${optimized['inclusion']:,.0f}**
+                * Enter exactly: **${optimized['inclusion']:,.0f}**
                 *(Overwrite any number TaxSlayer may have already put here)*
                 
                 **Step 2: Enter the Education Credit**
                 * Go to `Federal Section > Deductions > Credits > Education Credits`
                 * On the 1098-T entry screen, enter these exact values:
-                * **Tuition Paid:** **\${box_1:,.0f}**
-                * **Grants and Scholarships:** **\${optimized['ts_box_5_entry']:,.0f}** *(This is the Tax-Free portion that remains)*
-                * **Other Qualified Expenses:** **\${addl_qee:,.0f}**
+                * **Tuition Paid:** **${box_1:,.0f}**
+                * **Grants and Scholarships:** **${optimized['ts_box_5_entry']:,.0f}** *(This is the Tax-Free portion that remains)*
+                * **Other Qualified Expenses:** **${addl_qee:,.0f}**
                 """)
                 
             with c2:
-                st.subheader("🗣️ Explanation for the Client")
+                st.markdown("<h3 style='margin-top:0;'>🗣️ Explanation for the Client</h3>", unsafe_allow_html=True)
                 
                 added_income = optimized['inclusion'] - baseline['inclusion']
                 added_tax = (optimized['fed_tax'] + optimized['nc_tax']) - (baseline['fed_tax'] + baseline['nc_tax'])
                 added_credit = optimized['credit'] - baseline['credit']
                 
+                # Raw text (No markdown, no escape characters)
                 if baseline['inclusion'] > 0:
-                    client_text = f"Because your total scholarship (\${box_5:,.0f}) was larger than your educational expenses (\${total_qee:,.0f}), standard tax software automatically reports the difference (\${baseline['inclusion']:,.0f}) as taxable income. If we stopped there, your total tax burden would be \${baseline['tax_burden']:,.0f}.\n\n> However, we used an IRS-approved strategy to lower your bill. We voluntarily reported an additional \${added_income:,.0f} of your scholarship as income. While this temporarily increased your taxes by \${added_tax:,.0f}, doing so unlocked a Lifetime Learning Credit of \${added_credit:,.0f}. That credit completely paid for the tax increase and put an extra \${savings:,.0f} in your pocket!"
+                    client_text = f"Because your total scholarship (${box_5:,.0f}) was larger than your educational expenses (${total_qee:,.0f}), standard tax software automatically reports the difference (${baseline['inclusion']:,.0f}) as taxable income. If we stopped there, your total tax burden would be ${baseline['tax_burden']:,.0f}.<br><br>However, we used an IRS-approved strategy to lower your bill. We voluntarily reported an additional ${added_income:,.0f} of your scholarship as income. While this temporarily increased your taxes by ${added_tax:,.0f}, doing so unlocked a Lifetime Learning Credit of ${added_credit:,.0f}. That credit completely paid for the tax increase and put an extra ${savings:,.0f} in your pocket!"
                 else:
-                    client_text = f"Normally, because your educational expenses (\${total_qee:,.0f}) were higher than your scholarship (\${box_5:,.0f}), none of your scholarship would be taxed. Standard tax software would calculate your total tax burden as \${baseline['tax_burden']:,.0f}.\n\n> However, we used an IRS-approved strategy to lower your bill. We voluntarily reported \${added_income:,.0f} of your tax-free scholarship as taxable income. While this temporarily increased your taxes by \${added_tax:,.0f}, doing so unlocked a Lifetime Learning Credit of \${added_credit:,.0f}. That credit completely paid for the tax increase and put an extra \${savings:,.0f} in your pocket!"
+                    client_text = f"Normally, because your educational expenses (${total_qee:,.0f}) were higher than your scholarship (${box_5:,.0f}), none of your scholarship would be taxed. Standard tax software would calculate your total tax burden as ${baseline['tax_burden']:,.0f}.<br><br>However, we used an IRS-approved strategy to lower your bill. We voluntarily reported ${added_income:,.0f} of your tax-free scholarship as taxable income. While this temporarily increased your taxes by ${added_tax:,.0f}, doing so unlocked a Lifetime Learning Credit of ${added_credit:,.0f}. That credit completely paid for the tax increase and put an extra ${savings:,.0f} in your pocket!"
                 
-                st.markdown(f"> {client_text}")
+                # Inject directly as HTML to bypass Streamlit LaTeX formatting entirely
+                st.markdown(f"<div style='font-size:1.05em; line-height:1.5;'>{client_text}</div>", unsafe_allow_html=True)
 
             st.divider()
             
-            st.subheader("📊 The Math Breakdown")
+            st.markdown("<h3 style='margin-top:0;'>📊 The Math Breakdown</h3>", unsafe_allow_html=True)
             
-            # Format the credit so it doesn't show as -$0
             base_credit_str = f"-${baseline['credit']:,.0f}" if baseline['credit'] > 0 else "$0"
             opt_credit_str = f"-${optimized['credit']:,.0f}" if optimized['credit'] > 0 else "$0"
             
-            df = pd.DataFrame({
-                "Metric": [
-                    "Tax-Free Scholarship", 
-                    "TOTAL SCHOLARSHIP",
-                    "Taxable Scholarship",
-                    "Federal AGI", 
-                    "Federal Tax", 
-                    "State Tax",
-                    "Lifetime Learning Credit",
-                    "TOTAL NET TAX BURDEN"
-                ],
-                "Standard TaxSlayer Entry": [
-                    f"${baseline['ts_box_5_entry']:,.0f}", 
-                    f"${box_5:,.0f}",
-                    f"${baseline['inclusion']:,.0f}",
-                    f"${baseline['agi']:,.0f}", 
-                    f"${baseline['fed_tax']:,.0f}", 
-                    f"${baseline['nc_tax']:,.0f}", 
-                    base_credit_str,
-                    f"${baseline['tax_burden']:,.0f}"
-                ],
-                "After Optimization": [
-                    f"${optimized['ts_box_5_entry']:,.0f}", 
-                    f"${box_5:,.0f}",
-                    f"${optimized['inclusion']:,.0f}",
-                    f"${optimized['agi']:,.0f}", 
-                    f"${optimized['fed_tax']:,.0f}", 
-                    f"${optimized['nc_tax']:,.0f}", 
-                    opt_credit_str,
-                    f"${optimized['tax_burden']:,.0f}"
-                ]
-            })
-                
-            st.table(df)
-            st.markdown(f"**Optimization was successful and resulted in a \${savings:,.0f} net tax savings.**")
+            # Custom HTML Table for the UI (Removes index, right justifies, narrows columns)
+            ui_table = f"""
+            <table class="ui-math-table">
+                <tr>
+                    <th>Metric</th>
+                    <th>Standard TaxSlayer Entry</th>
+                    <th>After Optimization</th>
+                </tr>
+                <tr><td>Tax-Free Scholarship</td><td>${baseline['ts_box_5_entry']:,.0f}</td><td>${optimized['ts_box_5_entry']:,.0f}</td></tr>
+                <tr><td>Taxable Scholarship</td><td>${baseline['inclusion']:,.0f}</td><td>${optimized['inclusion']:,.0f}</td></tr>
+                <tr style="background-color: rgba(128, 128, 128, 0.05);"><td>TOTAL SCHOLARSHIP</td><td>${box_5:,.0f}</td><td>${box_5:,.0f}</td></tr>
+                <tr><td>Federal AGI</td><td>${baseline['agi']:,.0f}</td><td>${optimized['agi']:,.0f}</td></tr>
+                <tr><td>Federal Tax</td><td>${baseline['fed_tax']:,.0f}</td><td>${optimized['fed_tax']:,.0f}</td></tr>
+                <tr><td>State Tax</td><td>${baseline['nc_tax']:,.0f}</td><td>${optimized['nc_tax']:,.0f}</td></tr>
+                <tr><td>Lifetime Learning Credit</td><td>{base_credit_str}</td><td>{opt_credit_str}</td></tr>
+                <tr class="total-row"><td>TOTAL NET TAX BURDEN</td><td>${baseline['tax_burden']:,.0f}</td><td>${optimized['tax_burden']:,.0f}</td></tr>
+            </table>
+            """
+            st.markdown(ui_table, unsafe_allow_html=True)
+            st.markdown(f"<p style='font-size:1.1em; font-weight:bold; margin-top:10px;'>Optimization was successful and resulted in a ${savings:,.0f} net tax savings.</p>", unsafe_allow_html=True)
             
             # --- GENERATE PRINTABLE HTML REPORT ---
             html_report = f"""
@@ -292,12 +290,12 @@ if st.button("Calculate Optimization", type="primary"):
                     body {{ font-family: Arial, sans-serif; line-height: 1.6; max-width: 800px; margin: 20px auto; color: #333; }}
                     h2 {{ color: #2c3e50; border-bottom: 2px solid #eee; padding-bottom: 10px; }}
                     h3 {{ color: #34495e; margin-top: 30px; }}
-                    .client-box {{ background-color: #f9f9f9; border-left: 4px solid #cccccc; padding: 15px; font-style: italic; color: #555555; }}
-                    table {{ width: 100%; border-collapse: collapse; margin: 20px 0; }}
+                    .client-box {{ padding: 5px 0; font-size: 1.05em; }}
+                    table {{ width: 100%; max-width: 700px; border-collapse: collapse; margin: 20px 0; }}
                     th, td {{ border: 1px solid #ddd; padding: 10px 12px; text-align: right; }}
-                    th:first-child, td:first-child {{ text-align: left; font-weight: bold; }}
+                    th:first-child, td:first-child {{ text-align: left; font-weight: bold; width: 50%; }}
                     th {{ background-color: #f4f6f8; }}
-                    .summary {{ font-size: 1.1em; font-weight: bold; color: #155724; background-color: #d4edda; border: 1px solid #c3e6cb; padding: 15px; border-radius: 5px; text-align: center; margin-top: 20px; }}
+                    .summary {{ font-size: 1.1em; font-weight: bold; color: #155724; border-top: 2px solid #333; padding-top: 15px; margin-top: 20px; }}
                     @media print {{
                         body {{ margin: 0; }}
                         .no-print {{ display: none; }}
@@ -307,9 +305,9 @@ if st.button("Calculate Optimization", type="primary"):
             <body>
                 <h2>Tax-Aide Optimization Report</h2>
                 
-                <h3>Explanation for the Client</h3>
+                <h3>Explanation</h3>
                 <div class="client-box">
-                    {client_text.replace(chr(10) + '> ', '<br><br>')}
+                    {client_text}
                 </div>
                 
                 <h3>The Math Breakdown</h3>
@@ -320,8 +318,8 @@ if st.button("Calculate Optimization", type="primary"):
                         <th>After Optimization</th>
                     </tr>
                     <tr><td>Tax-Free Scholarship</td><td>${baseline['ts_box_5_entry']:,.0f}</td><td>${optimized['ts_box_5_entry']:,.0f}</td></tr>
-                    <tr style="background-color:#fefefe"><td>TOTAL SCHOLARSHIP</td><td>${box_5:,.0f}</td><td>${box_5:,.0f}</td></tr>
                     <tr><td>Taxable Scholarship</td><td>${baseline['inclusion']:,.0f}</td><td>${optimized['inclusion']:,.0f}</td></tr>
+                    <tr style="background-color:#fefefe"><td>TOTAL SCHOLARSHIP</td><td>${box_5:,.0f}</td><td>${box_5:,.0f}</td></tr>
                     <tr><td>Federal AGI</td><td>${baseline['agi']:,.0f}</td><td>${optimized['agi']:,.0f}</td></tr>
                     <tr><td>Federal Tax</td><td>${baseline['fed_tax']:,.0f}</td><td>${optimized['fed_tax']:,.0f}</td></tr>
                     <tr><td>State Tax</td><td>${baseline['nc_tax']:,.0f}</td><td>${optimized['nc_tax']:,.0f}</td></tr>
@@ -341,14 +339,24 @@ if st.button("Calculate Optimization", type="primary"):
             """
             
             st.divider()
-            st.write("### 📄 Export Documentation")
+            st.markdown("<h3 style='margin-top:0;'>📄 Export Documentation</h3>", unsafe_allow_html=True)
             st.download_button(
                 label="📥 Download Printable Client Report",
                 data=html_report,
                 file_name="LLC_Optimization_Report.html",
-                mime="text/html",
-                help="Click to download a clean HTML document. Open it in your browser and select 'Print to PDF' to upload it to the documentation portal!"
+                mime="text/html"
             )
             
         else:
             st.info("✅ **No Optimization Available.** Standard TaxSlayer reporting is already the best mathematical outcome for this client.")
+
+# --- INVISIBLE JS TO AUTO-FOCUS FIRST INPUT BOX ---
+components.html("""
+    <script>
+        const doc = window.parent.document;
+        const inputs = doc.querySelectorAll('input[type="number"]');
+        if (inputs.length > 0) {
+            inputs[0].focus();
+        }
+    </script>
+""", height=0)
