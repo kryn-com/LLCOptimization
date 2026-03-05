@@ -102,12 +102,16 @@ def optimize_scholarship(
         state_adjustment_factor = 0
 
     # --- 4. CALCULATION ENGINE (WITH IRS $50 BUCKETING) ---
+    def irs_round(val):
+        """Forces traditional 'round half up' to match IRS rules and defeat Banker's Rounding."""
+        return int(math.floor(val + 0.5))
+
     def calculate_scenario(inclusion_amount):
         if inclusion_amount > box_5_scholarship:
             inclusion_amount = box_5_scholarship
 
         new_agi = clean_agi + inclusion_amount
-        fed_taxable = round(max(0, new_agi - FED_STD_DEDUCTION))
+        fed_taxable = irs_round(max(0, new_agi - FED_STD_DEDUCTION))
         
         # IRS $50 Table Logic
         if fed_taxable <= 0:
@@ -130,18 +134,18 @@ def optimize_scholarship(
             else:
                 tax_raw = 11925 * 0.10 + (48475 - 11925) * 0.12 + (103350 - 48475) * 0.22 + (ti_to_use - 103350) * 0.24
                 
-            fed_tax = round(tax_raw)
+            fed_tax = irs_round(tax_raw)
         
         nc_taxable_calc = new_agi - NC_STD_DEDUCTION + state_adjustment_factor
-        nc_taxable = round(max(0, nc_taxable_calc))
-        nc_tax = round(nc_taxable * nc_tax_rate)
+        nc_taxable = irs_round(max(0, nc_taxable_calc))
+        nc_tax = irs_round(nc_taxable * nc_tax_rate)
         
         tax_free_scholarship = max(0, box_5_scholarship - inclusion_amount)
         qualified_expenses = max(0, total_qee - tax_free_scholarship)
         
         potential_credit = qualified_expenses * 0.20
         potential_credit = min(2000, potential_credit)
-        usable_credit = round(min(potential_credit, fed_tax))
+        usable_credit = irs_round(min(potential_credit, fed_tax))
         
         net_position = usable_credit - (fed_tax + nc_tax)
         tax_burden = (fed_tax + nc_tax) - usable_credit
@@ -220,12 +224,12 @@ with col8:
 if st.button("Calculate Optimization", type="primary"):
     
     # Properly round any decimals to the nearest whole dollar
-    box_1 = int(round(box_1_in)) if box_1_in else 0
-    box_5 = int(round(box_5_in)) if box_5_in else 0
-    addl_qee = int(round(addl_qee_in)) if addl_qee_in else 0
-    agi = int(round(agi_in)) if agi_in else 0
-    nc_taxable = int(round(nc_taxable_in)) if nc_taxable_in else 0
-    line_8r = int(round(line_8r_in)) if line_8r_in else 0
+    box_1 = int(math.floor(box_1_in + 0.5)) if box_1_in else 0
+    box_5 = int(math.floor(box_5_in + 0.5)) if box_5_in else 0
+    addl_qee = int(math.floor(addl_qee_in + 0.5)) if addl_qee_in else 0
+    agi = int(math.floor(agi_in + 0.5)) if agi_in else 0
+    nc_taxable = int(math.floor(nc_taxable_in + 0.5)) if nc_taxable_in else 0
+    line_8r = int(math.floor(line_8r_in + 0.5)) if line_8r_in else 0
     
     if box_1 == 0 and box_5 == 0:
         st.warning("Please enter the 1098-T information to begin.")
