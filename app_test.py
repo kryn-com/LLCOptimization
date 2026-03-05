@@ -32,6 +32,18 @@ div[data-testid="stSlider"] div[data-testid="stNumberInputContainer"]::before {
     content: "";
 }
 
+/* SLEDGEHAMMER: Hide Streamlit's default Step (+/-) and Clear (x) buttons */
+button[aria-label="Step up"], 
+button[aria-label="Step down"], 
+button[aria-label="Clear input"] {
+    display: none !important;
+}
+
+/* Remove the empty space the buttons leave behind */
+div[data-testid="stNumberInputContainer"] {
+    padding-right: 0px !important;
+}
+
 /* Custom UI Table Styling */
 .ui-math-table {
     width: 100%;
@@ -191,20 +203,4 @@ st.markdown("<div class='fake-header'>2. TaxSlayer Current Status</div>", unsafe
 
 col5, col6, col7, col8 = st.columns(4)
 with col5:
-    st.markdown("**Federal AGI**<br><span style='font-size:0.9em; font-weight:normal;'>*(Form 1040, Line 11)*</span><br>&nbsp;", unsafe_allow_html=True)
-    agi = st.number_input("agi", min_value=0, value=0, step=100, label_visibility="collapsed")
-with col6:
-    st.markdown("**State Taxable Income**<br><span style='font-size:0.9em; font-weight:normal;'>*(NC D-400, Line 14)*</span><br>&nbsp;", unsafe_allow_html=True)
-    nc_taxable = st.number_input("nc_taxable", min_value=0, value=0, step=100, label_visibility="collapsed")
-with col7:
-    st.markdown("**Taxable Scholarship** *(Line 8r)*<br><span style='font-size:0.85em; font-weight:normal;'>*Optional: Only if 1098-T entered to TaxSlayer*</span><br>&nbsp;", unsafe_allow_html=True)
-    line_8r = st.number_input("line_8r", min_value=0, value=0, step=100, label_visibility="collapsed")
-with col8:
-    st.empty()
-
-if st.button("Calculate Optimization", type="primary"):
-    
-    if box_1 == 0 and box_5 == 0:
-        st.warning("Please enter the 1098-T information to begin.")
-    else:
-        baseline, optimized = optimize
+    st.markdown("**Federal AGI**<br><span style='font-size:0.9em; font-weight:normal;'>*(Form 104
