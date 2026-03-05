@@ -297,4 +297,58 @@ if st.button("Calculate Optimization", type="primary"):
                     th, td {{ border: 1px solid #ddd; padding: 10px 12px; text-align: right; }}
                     th:first-child, td:first-child {{ text-align: left; font-weight: bold; }}
                     th {{ background-color: #f4f6f8; }}
-                    .summary {{ font-size: 1.1em; font-weight: bold; color: #155724; background-color: #d4edda; border: 1px solid #c3e6cb; padding: 15px; border-radius: 5px; text-
+                    .summary {{ font-size: 1.1em; font-weight: bold; color: #155724; background-color: #d4edda; border: 1px solid #c3e6cb; padding: 15px; border-radius: 5px; text-align: center; margin-top: 20px; }}
+                    @media print {{
+                        body {{ margin: 0; }}
+                        .no-print {{ display: none; }}
+                    }}
+                </style>
+            </head>
+            <body>
+                <h2>Tax-Aide Optimization Report</h2>
+                
+                <h3>Explanation for the Client</h3>
+                <div class="client-box">
+                    {client_text.replace(chr(10) + '> ', '<br><br>')}
+                </div>
+                
+                <h3>The Math Breakdown</h3>
+                <table>
+                    <tr>
+                        <th>Metric</th>
+                        <th>Standard TaxSlayer Entry</th>
+                        <th>After Optimization</th>
+                    </tr>
+                    <tr><td>Tax-Free Scholarship</td><td>${baseline['ts_box_5_entry']:,.0f}</td><td>${optimized['ts_box_5_entry']:,.0f}</td></tr>
+                    <tr style="background-color:#fefefe"><td>TOTAL SCHOLARSHIP</td><td>${box_5:,.0f}</td><td>${box_5:,.0f}</td></tr>
+                    <tr><td>Taxable Scholarship</td><td>${baseline['inclusion']:,.0f}</td><td>${optimized['inclusion']:,.0f}</td></tr>
+                    <tr><td>Federal AGI</td><td>${baseline['agi']:,.0f}</td><td>${optimized['agi']:,.0f}</td></tr>
+                    <tr><td>Federal Tax</td><td>${baseline['fed_tax']:,.0f}</td><td>${optimized['fed_tax']:,.0f}</td></tr>
+                    <tr><td>State Tax</td><td>${baseline['nc_tax']:,.0f}</td><td>${optimized['nc_tax']:,.0f}</td></tr>
+                    <tr><td>Lifetime Learning Credit</td><td>{base_credit_str}</td><td>{opt_credit_str}</td></tr>
+                    <tr style="background-color:#f4f6f8"><td>TOTAL NET TAX BURDEN</td><td>${baseline['tax_burden']:,.0f}</td><td>${optimized['tax_burden']:,.0f}</td></tr>
+                </table>
+                
+                <div class="summary">
+                    Optimization was successful and resulted in a ${savings:,.0f} net tax savings.
+                </div>
+                
+                <p class="no-print" style="text-align:center; margin-top:30px; color:#666;">
+                    <em>Tip: Press <strong>Ctrl+P</strong> (or Cmd+P on Mac) to print this page or save it as a PDF.</em>
+                </p>
+            </body>
+            </html>
+            """
+            
+            st.divider()
+            st.write("### 📄 Export Documentation")
+            st.download_button(
+                label="📥 Download Printable Client Report",
+                data=html_report,
+                file_name="LLC_Optimization_Report.html",
+                mime="text/html",
+                help="Click to download a clean HTML document. Open it in your browser and select 'Print to PDF' to upload it to the documentation portal!"
+            )
+            
+        else:
+            st.info("✅ **No Optimization Available.** Standard TaxSlayer reporting is already the best mathematical outcome for this client.")
