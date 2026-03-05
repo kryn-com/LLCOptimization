@@ -32,18 +32,6 @@ div[data-testid="stSlider"] div[data-testid="stNumberInputContainer"]::before {
     content: "";
 }
 
-/* SLEDGEHAMMER: Hide Streamlit's default Step (+/-) and Clear (x) buttons */
-button[aria-label="Step up"], 
-button[aria-label="Step down"], 
-button[aria-label="Clear input"] {
-    display: none !important;
-}
-
-/* Remove the empty space the buttons leave behind */
-div[data-testid="stNumberInputContainer"] {
-    padding-right: 0px !important;
-}
-
 /* Custom UI Table Styling */
 .ui-math-table {
     width: 100%;
@@ -189,13 +177,13 @@ st.markdown("<div class='fake-header'>1. Education Documents</div>", unsafe_allo
 col1, col2, col3, col4 = st.columns(4)
 with col1:
     st.markdown("**1098-T Box 1**<br><span style='font-size:0.9em; font-weight:normal;'>*(Tuition Paid)*</span>", unsafe_allow_html=True)
-    box_1_in = st.number_input("box_1", value=None, format="%d", step=1, label_visibility="collapsed")
+    box_1 = st.number_input("box_1", min_value=0, value=0, step=100, label_visibility="collapsed")
 with col2:
     st.markdown("**1098-T Box 5**<br><span style='font-size:0.9em; font-weight:normal;'>*(Total Scholarship)*</span>", unsafe_allow_html=True)
-    box_5_in = st.number_input("box_5", value=None, format="%d", step=1, label_visibility="collapsed")
+    box_5 = st.number_input("box_5", min_value=0, value=0, step=100, label_visibility="collapsed")
 with col3:
     st.markdown("**Other Qualified Expenses**<br><span style='font-size:0.9em; font-weight:normal;'>*(Books, Supplies, etc.)*</span>", unsafe_allow_html=True)
-    addl_qee_in = st.number_input("addl_qee", value=None, format="%d", step=1, label_visibility="collapsed")
+    addl_qee = st.number_input("addl_qee", min_value=0, value=0, step=100, label_visibility="collapsed")
 with col4:
     st.empty()
 
@@ -204,176 +192,19 @@ st.markdown("<div class='fake-header'>2. TaxSlayer Current Status</div>", unsafe
 col5, col6, col7, col8 = st.columns(4)
 with col5:
     st.markdown("**Federal AGI**<br><span style='font-size:0.9em; font-weight:normal;'>*(Form 1040, Line 11)*</span><br>&nbsp;", unsafe_allow_html=True)
-    agi_in = st.number_input("agi", value=None, format="%d", step=1, label_visibility="collapsed")
+    agi = st.number_input("agi", min_value=0, value=0, step=100, label_visibility="collapsed")
 with col6:
     st.markdown("**State Taxable Income**<br><span style='font-size:0.9em; font-weight:normal;'>*(NC D-400, Line 14)*</span><br>&nbsp;", unsafe_allow_html=True)
-    nc_taxable_in = st.number_input("nc_taxable", value=None, format="%d", step=1, label_visibility="collapsed")
+    nc_taxable = st.number_input("nc_taxable", min_value=0, value=0, step=100, label_visibility="collapsed")
 with col7:
-    st.markdown("**Taxable Scholarship** *(Line 8r)*<br><span style='font-size:0.85em; font-weight:normal;'>*Optional: Only if 1098-T entered*</span><br>&nbsp;", unsafe_allow_html=True)
-    line_8r_in = st.number_input("line_8r", value=None, format="%d", step=1, label_visibility="collapsed")
+    st.markdown("**Taxable Scholarship** *(Line 8r)*<br><span style='font-size:0.85em; font-weight:normal;'>*Optional: Only if 1098-T entered to TaxSlayer*</span><br>&nbsp;", unsafe_allow_html=True)
+    line_8r = st.number_input("line_8r", min_value=0, value=0, step=100, label_visibility="collapsed")
 with col8:
     st.empty()
 
 if st.button("Calculate Optimization", type="primary"):
     
-    # Coalesce None values to 0 to prevent math errors
-    box_1 = box_1_in or 0
-    box_5 = box_5_in or 0
-    addl_qee = addl_qee_in or 0
-    agi = agi_in or 0
-    nc_taxable = nc_taxable_in or 0
-    line_8r = line_8r_in or 0
-    
     if box_1 == 0 and box_5 == 0:
         st.warning("Please enter the 1098-T information to begin.")
     else:
-        baseline, optimized = optimize_scholarship(box_1, addl_qee, box_5, agi, nc_taxable, line_8r, nc_rate)
-        
-        savings = baseline['tax_burden'] - optimized['tax_burden']
-        total_qee = box_1 + addl_qee
-        
-        st.divider()
-        
-        if savings > 5:
-            st.success(f"### 💰 Optimization Successful! You saved the client **${savings:,.0f}**")
-            
-            c1, c2 = st.columns(2)
-            
-            with c1:
-                st.markdown("<h3 style='margin-top:0;'>🛠️ TaxSlayer Instructions</h3>", unsafe_allow_html=True)
-                st.markdown(f"""
-                **Step 1: Enter the Taxable Income**
-                * Go to `Federal Section > Income > Other Income > Other Compensation > Scholarships and Grants`
-                * Enter exactly: **\\${optimized['inclusion']:,.0f}**
-                *(Overwrite any number TaxSlayer may have already put here)*
-                
-                **Step 2: Enter the Education Credit**
-                * Go to `Federal Section > Deductions > Credits > Education Credits`
-                * On the 1098-T entry screen, enter these exact values:
-                * **Tuition Paid:** **\\${box_1:,.0f}**
-                * **Grants and Scholarships:** **\\${optimized['ts_box_5_entry']:,.0f}** *(This is the Tax-Free portion that remains)*
-                * **Other Qualified Expenses:** **\\${addl_qee:,.0f}**
-                """)
-                
-            with c2:
-                st.markdown("<h3 style='margin-top:0;'>🗣️ Explanation for the Client</h3>", unsafe_allow_html=True)
-                
-                added_income = optimized['inclusion'] - baseline['inclusion']
-                added_tax = (optimized['fed_tax'] + optimized['nc_tax']) - (baseline['fed_tax'] + baseline['nc_tax'])
-                added_credit = optimized['credit'] - baseline['credit']
-                
-                if baseline['inclusion'] > 0:
-                    client_text = f"Because your total scholarship (${box_5:,.0f}) was larger than your educational expenses (${total_qee:,.0f}), standard tax software automatically reports the difference (${baseline['inclusion']:,.0f}) as taxable income. If we stopped there, your total tax burden would be ${baseline['tax_burden']:,.0f}.<br><br>However, we used an IRS-approved strategy to lower your bill. We voluntarily reported an additional ${added_income:,.0f} of your scholarship as income. While this temporarily increased your taxes by ${added_tax:,.0f}, doing so unlocked a Lifetime Learning Credit of ${added_credit:,.0f}. That credit completely paid for the tax increase and put an extra ${savings:,.0f} in your pocket!"
-                else:
-                    client_text = f"Normally, because your educational expenses (${total_qee:,.0f}) were higher than your scholarship (${box_5:,.0f}), none of your scholarship would be taxed. Standard tax software would calculate your total tax burden as ${baseline['tax_burden']:,.0f}.<br><br>However, we used an IRS-approved strategy to lower your bill. We voluntarily reported ${added_income:,.0f} of your tax-free scholarship as taxable income. While this temporarily increased your taxes by ${added_tax:,.0f}, doing so unlocked a Lifetime Learning Credit of ${added_credit:,.0f}. That credit completely paid for the tax increase and put an extra ${savings:,.0f} in your pocket!"
-                
-                st.markdown(f"<div style='font-size:1.05em; line-height:1.5;'>{client_text}</div>", unsafe_allow_html=True)
-
-            st.divider()
-            
-            st.markdown("<h3 style='margin-top:0;'>📊 The Math Breakdown</h3>", unsafe_allow_html=True)
-            
-            base_credit_str = f"-${baseline['credit']:,.0f}" if baseline['credit'] > 0 else "$0"
-            opt_credit_str = f"-${optimized['credit']:,.0f}" if optimized['credit'] > 0 else "$0"
-            
-            ui_table = f"""
-            <table class="ui-math-table">
-                <tr>
-                    <th>Metric</th>
-                    <th>Standard TaxSlayer Entry</th>
-                    <th>After Optimization</th>
-                </tr>
-                <tr><td>Tax-Free Scholarship</td><td>${baseline['ts_box_5_entry']:,.0f}</td><td>${optimized['ts_box_5_entry']:,.0f}</td></tr>
-                <tr><td>Taxable Scholarship</td><td>${baseline['inclusion']:,.0f}</td><td>${optimized['inclusion']:,.0f}</td></tr>
-                <tr style="background-color: rgba(128, 128, 128, 0.05);"><td>TOTAL SCHOLARSHIP</td><td>${box_5:,.0f}</td><td>${box_5:,.0f}</td></tr>
-                <tr><td>Federal AGI</td><td>${baseline['agi']:,.0f}</td><td>${optimized['agi']:,.0f}</td></tr>
-                <tr><td>Federal Tax</td><td>${baseline['fed_tax']:,.0f}</td><td>${optimized['fed_tax']:,.0f}</td></tr>
-                <tr><td>State Tax</td><td>${baseline['nc_tax']:,.0f}</td><td>${optimized['nc_tax']:,.0f}</td></tr>
-                <tr><td>Lifetime Learning Credit</td><td>{base_credit_str}</td><td>{opt_credit_str}</td></tr>
-                <tr class="total-row"><td>TOTAL NET TAX BURDEN</td><td>${baseline['tax_burden']:,.0f}</td><td>${optimized['tax_burden']:,.0f}</td></tr>
-            </table>
-            """
-            st.markdown(ui_table, unsafe_allow_html=True)
-            st.markdown(f"<p style='font-size:1.1em; font-weight:bold; margin-top:10px;'>Optimization was successful and resulted in a ${savings:,.0f} net tax savings.</p>", unsafe_allow_html=True)
-            
-            # --- GENERATE PRINTABLE HTML REPORT ---
-            html_report = f"""
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <meta charset="utf-8">
-                <title>Lifetime Learning Credit Optimization Report</title>
-                <style>
-                    body {{ font-family: Arial, sans-serif; line-height: 1.6; max-width: 800px; margin: 20px auto; color: #333; }}
-                    h2 {{ color: #2c3e50; border-bottom: 2px solid #eee; padding-bottom: 10px; }}
-                    h3 {{ color: #34495e; margin-top: 30px; }}
-                    .client-box {{ padding: 5px 0; font-size: 1.05em; }}
-                    table {{ width: 100%; max-width: 700px; border-collapse: collapse; margin: 20px 0; }}
-                    th, td {{ border: 1px solid #ddd; padding: 10px 12px; text-align: right; }}
-                    th:first-child, td:first-child {{ text-align: left; font-weight: bold; width: 50%; }}
-                    th {{ background-color: #f4f6f8; }}
-                    .summary {{ font-size: 1.1em; font-weight: bold; color: #155724; border-top: 2px solid #333; padding-top: 15px; margin-top: 20px; }}
-                    @media print {{
-                        body {{ margin: 0; }}
-                        .no-print {{ display: none; }}
-                    }}
-                </style>
-            </head>
-            <body>
-                <h2>Tax-Aide Optimization Report</h2>
-                
-                <h3>Explanation</h3>
-                <div class="client-box">
-                    {client_text}
-                </div>
-                
-                <h3>The Math Breakdown</h3>
-                <table>
-                    <tr>
-                        <th>Metric</th>
-                        <th>Standard TaxSlayer Entry</th>
-                        <th>After Optimization</th>
-                    </tr>
-                    <tr><td>Tax-Free Scholarship</td><td>${baseline['ts_box_5_entry']:,.0f}</td><td>${optimized['ts_box_5_entry']:,.0f}</td></tr>
-                    <tr><td>Taxable Scholarship</td><td>${baseline['inclusion']:,.0f}</td><td>${optimized['inclusion']:,.0f}</td></tr>
-                    <tr style="background-color:#fefefe"><td>TOTAL SCHOLARSHIP</td><td>${box_5:,.0f}</td><td>${box_5:,.0f}</td></tr>
-                    <tr><td>Federal AGI</td><td>${baseline['agi']:,.0f}</td><td>${optimized['agi']:,.0f}</td></tr>
-                    <tr><td>Federal Tax</td><td>${baseline['fed_tax']:,.0f}</td><td>${optimized['fed_tax']:,.0f}</td></tr>
-                    <tr><td>State Tax</td><td>${baseline['nc_tax']:,.0f}</td><td>${optimized['nc_tax']:,.0f}</td></tr>
-                    <tr><td>Lifetime Learning Credit</td><td>{base_credit_str}</td><td>{opt_credit_str}</td></tr>
-                    <tr style="background-color:#f4f6f8"><td>TOTAL NET TAX BURDEN</td><td>${baseline['tax_burden']:,.0f}</td><td>${optimized['tax_burden']:,.0f}</td></tr>
-                </table>
-                
-                <div class="summary">
-                    Optimization was successful and resulted in a ${savings:,.0f} net tax savings.
-                </div>
-                
-                <p class="no-print" style="text-align:center; margin-top:30px; color:#666;">
-                    <em>Tip: Press <strong>Ctrl+P</strong> (or Cmd+P on Mac) to print this page or save it as a PDF.</em>
-                </p>
-            </body>
-            </html>
-            """
-            
-            st.divider()
-            st.markdown("<h3 style='margin-top:0;'>📄 Export Documentation</h3>", unsafe_allow_html=True)
-            st.download_button(
-                label="📥 Download Printable Client Report",
-                data=html_report,
-                file_name="LLC_Optimization_Report.html",
-                mime="text/html"
-            )
-            
-        else:
-            st.info("✅ **No Optimization Available.** Standard TaxSlayer reporting is already the best mathematical outcome for this client.")
-
-# --- INVISIBLE JS TO AUTO-FOCUS FIRST INPUT BOX ---
-components.html("""
-    <script>
-        const doc = window.parent.document;
-        const inputs = doc.querySelectorAll('input[type="number"]');
-        if (inputs.length > 0) {
-            inputs[0].focus();
-        }
-    </script>
-""", height=0)
+        baseline, optimized = optimize
