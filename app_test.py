@@ -209,7 +209,7 @@ with col6:
     st.markdown("<div style='height: 4.5rem;'><b>State Taxable Income</b><br><span style='font-size:0.9em; font-weight:normal;'><i>(NC D-400, Line 14)</i></span></div>", unsafe_allow_html=True)
     nc_taxable_in = st.number_input("nc_taxable", min_value=0.0, value=0.0, step=100.0, format="%.0f", label_visibility="collapsed")
 with col7:
-    st.markdown("<div style='height: 4.5rem;'><b>Taxable Scholarship</b> <i>(Line 8r)</i><br><span style='font-size:0.85em; font-weight:normal;'><i>*Optional: Only if 1098-T entered to TaxSlayer*</i></span></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height: 4.5rem;'><b>Taxable Scholarship</b> <i>(Sch 1 Line 8r)</i><br><span style='font-size:0.85em; font-weight:normal;'><i>*Optional: Only if 1098-T entered to TaxSlayer*</i></span></div>", unsafe_allow_html=True)
     line_8r_in = st.number_input("line_8r", min_value=0.0, value=0.0, step=100.0, format="%.0f", label_visibility="collapsed")
 with col8:
     st.empty()
@@ -363,13 +363,17 @@ if 'first_load' not in st.session_state:
     st.session_state.first_load = True
     components.html("""
         <script>
-            setTimeout(function() {
+            let attempts = 0;
+            let focusInterval = setInterval(function() {
                 const doc = window.parent.document;
                 const inputs = doc.querySelectorAll('input[type="number"]');
-                if (inputs.length > 0) {
+                if (inputs.length > 0 && inputs[0]) {
                     inputs[0].focus();
                     inputs[0].select();
+                    clearInterval(focusInterval);
                 }
-            }, 500);
+                attempts++;
+                if (attempts > 20) clearInterval(focusInterval); // Stop trying after 2 seconds
+            }, 100);
         </script>
     """, height=0)
