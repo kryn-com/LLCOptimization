@@ -212,8 +212,8 @@ st.markdown("<div class='fake-header'>2. TaxSlayer Current Status</div>", unsafe
 # ADDED: The Workflow Toggle
 entry_method = st.radio(
     "How are you entering the data?",
-    ["Clean Slate (I have NOT entered the 1098-T into TaxSlayer yet)", 
-     "Reverse Engineer (TaxSlayer has already processed the 1098-T)"],
+    ["Clean Slate (I have NOT entered the 1098-T or Stipend into TaxSlayer yet)", 
+     "Reverse Engineer (TaxSlayer has already processed the 1098-T and Stipend)"],
     horizontal=False
 )
 
@@ -245,16 +245,37 @@ if st.button("Calculate Optimization", type="primary"):
     nc_taxable = int(math.floor(nc_taxable_in + 0.5)) if nc_taxable_in else 0
     line_8r = int(math.floor(line_8r_in + 0.5)) if line_8r_in else 0
     
-    # Pre-process Line 8r based on the workflow toggle
+    # --- WORKFLOW TOGGLE LOGIC ---
     if "Clean Slate" in entry_method:
+        # Stipend is NOT in TaxSlayer yet. We must add it to construct the true baseline.
+        base_agi_to_pass = agi + ext_stipend
+        
+        # We must recalculate State Taxable to account for any "unused" standard deduction
+        # if their baseline W-2 AGI was below the $12,750 NC threshold.
+        NC_STD_DED = 12750
+        
+        # Find any custom state adjustments (like additions/subtractions) the user already entered
+        if nc_taxable > 0:
+            implied_state_adj = nc_taxable - (agi - NC_STD_DED)
+        else:
+            implied_state_adj = 0 # Assume 0 if floored, which is standard for grad students
+            
+        # Mathematically rebuild the true state taxable floor
+        base_nc_to_pass = max(0, base_agi_to_pass - NC_STD_DED + implied_state_adj)
         actual_1098t_8r = 0
+        
     else:
+        # Stipend IS already in TaxSlayer. We pass the AGI as-is and let the engine strip the 1098-T.
+        base_agi_to_pass = agi
+        base_nc_to_pass = nc_taxable
         actual_1098t_8r = max(0, line_8r - ext_stipend)
     
     if box_1 == 0 and box_5 == 0:
         st.warning("Please enter the 1098-T information to begin.")
     else:
-        baseline, optimized = optimize_scholarship(box_1, addl_qee, box_5, agi, nc_taxable, actual_1098t_8r, nc_rate)
+        baseline, optimized = optimize_scholarship(
+            box_1, addl_qee, box_5, base_agi_to_pass, base_nc_to_pass, actual_1098t_8r, nc_rate
+        )
         
         savings = baseline['tax_burden'] - optimized['tax_burden']
         total_qee = box_1 + addl_qee
@@ -273,7 +294,6 @@ if st.button("Calculate Optimization", type="primary"):
                 final_ts_entry = optimized['inclusion'] + ext_stipend
                 stipend_note = f"(This combines the ${ext_stipend:,.0f} stipend with the ${optimized['inclusion']:,.0f} 1098-T shift)" if ext_stipend > 0 else "(Overwrite any number TaxSlayer may have already put here)"
                 
-                # FIXED: Markdown formatting bug prevented by using HTML italics
                 instructions = (
                     "**Step 1: Enter the Taxable Income**\n"
                     "* Go to `Federal Section > Income > Other Income > Other Compensation > Scholarships and Grants`\n"
@@ -294,7 +314,6 @@ if st.button("Calculate Optimization", type="primary"):
                 added_income = optimized['inclusion'] - baseline['inclusion']
                 added_tax = (optimized['fed_tax'] + optimized['nc_tax']) - (baseline['fed_tax'] + baseline['nc_tax'])
                 
-                # REWRITTEN: Universally compares baseline output directly to optimized output to highlight value-add
                 client_text = (
                     f"<b>Standard Tax Software Outcome:</b><br>"
                     f"If we processed your education documents using standard default settings, your return would generate a Lifetime Learning Credit of ${baseline['credit']:,.0f} "
@@ -316,11 +335,9 @@ if st.button("Calculate Optimization", type="primary"):
             base_credit_str = f"-${baseline['credit']:,.0f}" if baseline['credit'] > 0 else "$0"
             opt_credit_str = f"-${optimized['credit']:,.0f}" if optimized['credit'] > 0 else "$0"
             
-            # CALCULATE FINAL FEDERAL TAX
             base_final_fed = max(0, baseline['fed_tax'] - baseline['credit'])
             opt_final_fed = max(0, optimized['fed_tax'] - optimized['credit'])
             
-            # UPDATED: Reorganized table flow to include Final Federal Tax and State Taxable Income
             ui_table = (
                 '<table class="ui-math-table">'
                 '<tr><th>Metric</th><th>Standard TaxSlayer Entry</th><th>After Optimization</th></tr>'
