@@ -292,22 +292,21 @@ if st.button("Calculate Optimization", type="primary"):
                 
                 # Recombine the optimized 1098-T amount with the external funding for the final TaxSlayer entry
                 final_ts_entry = optimized['inclusion'] + ext_funding
-                funding_note = f"(This combines the ${ext_funding:,.0f} funding with the ${optimized['inclusion']:,.0f} 1098-T shift)" if ext_funding > 0 else "(Overwrite any number TaxSlayer may have already put here)"
+                funding_note = f"*(This combines the \${ext_funding:,.0f} funding with the \${optimized['inclusion']:,.0f} 1098-T shift)*" if ext_funding > 0 else "*(Overwrite any number TaxSlayer may have already put here)*"
                 
-                # Use strict HTML for the bolded numbers so markdown parsers don't choke on the $ signs
                 instructions = (
                     "**Step 1: Enter the Taxable Income**\n"
                     "* Go to `Federal Section > Income > Other Income > Other Compensation > Scholarships and Grants`\n"
-                    f"* Enter exactly: <b>${final_ts_entry:,.0f}</b>\n"
-                    f"  <i>{funding_note}</i>\n\n"
+                    f"* Enter exactly: **\${final_ts_entry:,.0f}**\n"
+                    f"  {funding_note}\n\n"
                     "**Step 2: Enter the Education Credit**\n"
                     "* Go to `Federal Section > Deductions > Credits > Education Credits`\n"
                     "* On the 1098-T entry screen, enter these exact values:\n"
-                    f"* **Tuition Paid:** <b>${box_1:,.0f}</b>\n"
-                    f"* **Grants and Scholarships:** <b>${optimized['ts_box_5_entry']:,.0f}</b> <i>(This is the Tax-Free portion that remains)</i>\n"
-                    f"* **Other Qualified Expenses:** <b>${addl_qee:,.0f}</b>\n"
+                    f"* **Tuition Paid:** **\${box_1:,.0f}**\n"
+                    f"* **Grants and Scholarships:** **\${optimized['ts_box_5_entry']:,.0f}** *(This is the Tax-Free portion that remains)*\n"
+                    f"* **Other Qualified Expenses:** **\${addl_qee:,.0f}**\n"
                 )
-                st.markdown(instructions, unsafe_allow_html=True)
+                st.markdown(instructions)
                 
             with c2:
                 st.markdown("<h3 style='margin-top:0;'>🗣️ Explanation for the Client</h3>", unsafe_allow_html=True)
