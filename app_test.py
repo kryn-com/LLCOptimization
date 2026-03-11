@@ -375,15 +375,15 @@ if st.button("Calculate Optimization", type="primary"):
                 '<!DOCTYPE html>\n<html>\n<head>\n'
                 '<meta charset="utf-8">\n<title>Lifetime Learning Credit Optimization Report</title>\n'
                 '<style>\n'
-                'body { font-family: Arial, sans-serif; line-height: 1.6; max-width: 800px; margin: 20px auto; color: #333; }\n'
-                'h2 { color: #2c3e50; border-bottom: 2px solid #eee; padding-bottom: 10px; }\n'
-                'h3 { color: #34495e; margin-top: 30px; }\n'
-                '.client-box { padding: 5px 0; font-size: 1.05em; }\n'
-                'table { width: 100%; max-width: 700px; border-collapse: collapse; margin: 20px 0; }\n'
-                'th, td { border: 1px solid #ddd; padding: 10px 12px; text-align: right; }\n'
+                'body { font-family: Arial, sans-serif; font-size: 14px; line-height: 1.4; max-width: 800px; margin: 15px auto; color: #333; }\n'
+                'h2 { color: #2c3e50; border-bottom: 2px solid #eee; padding-bottom: 5px; margin-bottom: 10px; }\n'
+                'h3 { color: #34495e; margin-top: 15px; margin-bottom: 5px; }\n'
+                '.client-box { padding: 5px 0; font-size: 1em; }\n'
+                'table { width: 100%; max-width: 700px; border-collapse: collapse; margin: 15px 0; }\n'
+                'th, td { border: 1px solid #ddd; padding: 6px 10px; text-align: right; }\n'
                 'th:first-child, td:first-child { text-align: left; font-weight: bold; width: 50%; }\n'
                 'th { background-color: #f4f6f8; }\n'
-                '.summary { font-size: 1.1em; font-weight: bold; color: #155724; border-top: 2px solid #333; padding-top: 15px; margin-top: 20px; }\n'
+                '.summary { font-size: 1.1em; font-weight: bold; color: #155724; border-top: 2px solid #333; padding-top: 10px; margin-top: 15px; }\n'
                 '@media print { body { margin: 0; } .no-print { display: none; } }\n'
                 '</style>\n</head>\n<body>\n'
                 '<h2>Tax-Aide Optimization Report</h2>\n'
@@ -419,9 +419,9 @@ if st.button("Calculate Optimization", type="primary"):
             )
             
         else:
+            st.info("✅ **No Optimization Available.** Standard TaxSlayer reporting is already the best mathematical outcome for this client.")
             st.markdown("<h3 style='margin-top:0;'>📊 The Math Breakdown</h3>", unsafe_allow_html=True)
             st.markdown(ui_table, unsafe_allow_html=True)
-            st.info("✅ **No Optimization Available.** Standard TaxSlayer reporting is already the best mathematical outcome for this client.")
 
 # --- INVISIBLE JS TO AUTO-FOCUS FIRST INPUT BOX ON INITIAL LOAD ---
 if 'first_load' not in st.session_state:
