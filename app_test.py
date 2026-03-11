@@ -82,12 +82,12 @@ def optimize_scholarship(
     box_5_scholarship,
     tso_current_agi,
     tso_state_taxable,
-    tso_line_8r,
+    actual_1098t_8r,
     nc_tax_rate=0.0425
 ):
     # --- 1. REVERSE ENGINEER THE CLEAN SLATE ---
-    clean_agi = tso_current_agi - tso_line_8r
-    clean_state_taxable = max(0, tso_state_taxable - tso_line_8r)
+    clean_agi = tso_current_agi - actual_1098t_8r
+    clean_state_taxable = max(0, tso_state_taxable - actual_1098t_8r)
 
     # --- 2. CONSTANTS ---
     FED_STD_DEDUCTION = 15750 
@@ -159,6 +159,7 @@ def optimize_scholarship(
             "credit": usable_credit,
             "agi": new_agi,
             "fed_taxable": fed_taxable, 
+            "nc_taxable": nc_taxable,
             "ts_box_5_entry": tax_free_scholarship,
             "expenses_to_claim": qualified_expenses
         }
@@ -175,8 +176,8 @@ def optimize_scholarship(
     # Iterate exactly dollar-by-dollar up to the hard cap
     for inc in range(int(min_inclusion), max_inclusion + 1):
         res = calculate_scenario(inc)
-        # Using >= ensures we push up to the highest scholarship amount that maintains the maximum savings
-        if res['net_position'] >= optimized['net_position']:
+        # Using strict > ensures we capture the LOWEST scholarship amount that achieves the maximum savings
+        if res['net_position'] > optimized['net_position']:
             optimized = res
 
     return baseline, optimized
@@ -188,7 +189,6 @@ st.title("🎓 Lifetime Learning Credit Optimizer")
 with st.sidebar:
     st.header("Settings")
     nc_rate = st.slider("State Tax Rate (%)", min_value=0.0, max_value=7.0, value=4.25, step=0.01) / 100
-    st.success("💡 **Workflow:** You can enter the clean baseline before touching the 1098-T, OR enter the current numbers after TaxSlayer has processed the 1098-T. The app handles both!")
 
 st.markdown("<div class='fake-header'>1. Education Documents</div>", unsafe_allow_html=True)
 
@@ -204,9 +204,18 @@ with col3:
     st.markdown("<div style='height: 3.5rem;'><b>Other Qualified Expenses</b><br><span style='font-size:0.9em; font-weight:normal;'><i>(Books, Supplies, etc.)</i></span></div>", unsafe_allow_html=True)
     addl_qee_in = st.number_input("addl_qee", min_value=0.0, value=0.0, step=100.0, format="%.0f", label_visibility="collapsed")
 with col4:
-    st.empty()
+    st.markdown("<div style='height: 3.5rem;'><b>External Funding</b><br><span style='font-size:0.9em; font-weight:normal;'><i>(Taxable, NOT on 1098-T)</i></span></div>", unsafe_allow_html=True)
+    ext_funding_in = st.number_input("ext_funding", min_value=0.0, value=0.0, step=100.0, format="%.0f", label_visibility="collapsed")
 
 st.markdown("<div class='fake-header'>2. TaxSlayer Current Status</div>", unsafe_allow_html=True)
+
+# The Workflow Toggle
+entry_method = st.radio(
+    "How are you entering the data?",
+    ["Clean Slate (I have NOT entered the 1098-T or Funding into TaxSlayer yet)", 
+     "Reverse Engineer (TaxSlayer has already processed the 1098-T and Funding)"],
+    horizontal=False
+)
 
 col5, col6, col7, col8 = st.columns(4)
 with col5:
@@ -216,8 +225,12 @@ with col6:
     st.markdown("<div style='height: 4.5rem;'><b>State Taxable Income</b><br><span style='font-size:0.9em; font-weight:normal;'><i>(NC D-400, Line 14)</i></span></div>", unsafe_allow_html=True)
     nc_taxable_in = st.number_input("nc_taxable", min_value=0.0, value=0.0, step=100.0, format="%.0f", label_visibility="collapsed")
 with col7:
-    st.markdown("<div style='height: 4.5rem;'><b>Taxable Scholarship</b> <i>(Sch 1 Line 8r)</i><br><span style='font-size:0.85em; font-weight:normal;'><i>*Optional: Only if 1098-T entered to TaxSlayer*</i></span></div>", unsafe_allow_html=True)
-    line_8r_in = st.number_input("line_8r", min_value=0.0, value=0.0, step=100.0, format="%.0f", label_visibility="collapsed")
+    if "Reverse Engineer" in entry_method:
+        st.markdown("<div style='height: 4.5rem;'><b>Taxable Scholarship</b> <i>(Sch 1 Line 8r)</i><br><span style='font-size:0.85em; font-weight:normal;'><i>*Includes 1098-T + Funding*</i></span></div>", unsafe_allow_html=True)
+        line_8r_in = st.number_input("line_8r", min_value=0.0, value=0.0, step=100.0, format="%.0f", label_visibility="collapsed")
+    else:
+        st.markdown("<div style='height: 4.5rem; color:#888;'><b>Taxable Scholarship</b><br><span style='font-size:0.85em; font-weight:normal;'><i>(Hidden in Clean Slate Mode)</i></span></div>", unsafe_allow_html=True)
+        line_8r_in = 0.0
 with col8:
     st.empty()
 
@@ -227,14 +240,42 @@ if st.button("Calculate Optimization", type="primary"):
     box_1 = int(math.floor(box_1_in + 0.5)) if box_1_in else 0
     box_5 = int(math.floor(box_5_in + 0.5)) if box_5_in else 0
     addl_qee = int(math.floor(addl_qee_in + 0.5)) if addl_qee_in else 0
+    ext_funding = int(math.floor(ext_funding_in + 0.5)) if ext_funding_in else 0
     agi = int(math.floor(agi_in + 0.5)) if agi_in else 0
     nc_taxable = int(math.floor(nc_taxable_in + 0.5)) if nc_taxable_in else 0
     line_8r = int(math.floor(line_8r_in + 0.5)) if line_8r_in else 0
     
+    # --- WORKFLOW TOGGLE LOGIC ---
+    if "Clean Slate" in entry_method:
+        # Funding is NOT in TaxSlayer yet. We must add it to construct the true baseline.
+        base_agi_to_pass = agi + ext_funding
+        
+        # We must recalculate State Taxable to account for any "unused" standard deduction
+        # if their baseline W-2 AGI was below the $12,750 NC threshold.
+        NC_STD_DED = 12750
+        
+        # Find any custom state adjustments (like additions/subtractions) the user already entered
+        if nc_taxable > 0:
+            implied_state_adj = nc_taxable - (agi - NC_STD_DED)
+        else:
+            implied_state_adj = 0 # Assume 0 if floored, which is standard for grad students
+            
+        # Mathematically rebuild the true state taxable floor
+        base_nc_to_pass = max(0, base_agi_to_pass - NC_STD_DED + implied_state_adj)
+        actual_1098t_8r = 0
+        
+    else:
+        # Funding IS already in TaxSlayer. We pass the AGI as-is and let the engine strip the 1098-T.
+        base_agi_to_pass = agi
+        base_nc_to_pass = nc_taxable
+        actual_1098t_8r = max(0, line_8r - ext_funding)
+    
     if box_1 == 0 and box_5 == 0:
         st.warning("Please enter the 1098-T information to begin.")
     else:
-        baseline, optimized = optimize_scholarship(box_1, addl_qee, box_5, agi, nc_taxable, line_8r, nc_rate)
+        baseline, optimized = optimize_scholarship(
+            box_1, addl_qee, box_5, base_agi_to_pass, base_nc_to_pass, actual_1098t_8r, nc_rate
+        )
         
         savings = baseline['tax_burden'] - optimized['tax_burden']
         total_qee = box_1 + addl_qee
@@ -249,17 +290,21 @@ if st.button("Calculate Optimization", type="primary"):
             with c1:
                 st.markdown("<h3 style='margin-top:0;'>🛠️ TaxSlayer Instructions</h3>", unsafe_allow_html=True)
                 
+                # Recombine the optimized 1098-T amount with the external funding for the final TaxSlayer entry
+                final_ts_entry = optimized['inclusion'] + ext_funding
+                funding_note = f"*(This combines the \${ext_funding:,.0f} funding with the \${optimized['inclusion']:,.0f} 1098-T shift)*" if ext_funding > 0 else "*(Overwrite any number TaxSlayer may have already put here)*"
+                
                 instructions = (
                     "**Step 1: Enter the Taxable Income**\n"
                     "* Go to `Federal Section > Income > Other Income > Other Compensation > Scholarships and Grants`\n"
-                    f"* Enter exactly: **${optimized['inclusion']:,.0f}**\n"
-                    "*(Overwrite any number TaxSlayer may have already put here)*\n\n"
+                    f"* Enter exactly: **\${final_ts_entry:,.0f}**\n"
+                    f"  {funding_note}\n\n"
                     "**Step 2: Enter the Education Credit**\n"
                     "* Go to `Federal Section > Deductions > Credits > Education Credits`\n"
                     "* On the 1098-T entry screen, enter these exact values:\n"
-                    f"* **Tuition Paid:** **${box_1:,.0f}**\n"
-                    f"* **Grants and Scholarships:** **${optimized['ts_box_5_entry']:,.0f}** *(This is the Tax-Free portion that remains)*\n"
-                    f"* **Other Qualified Expenses:** **${addl_qee:,.0f}**\n"
+                    f"* **Tuition Paid:** **\${box_1:,.0f}**\n"
+                    f"* **Grants and Scholarships:** **\${optimized['ts_box_5_entry']:,.0f}** *(This is the Tax-Free portion that remains)*\n"
+                    f"* **Other Qualified Expenses:** **\${addl_qee:,.0f}**\n"
                 )
                 st.markdown(instructions)
                 
@@ -268,27 +313,18 @@ if st.button("Calculate Optimization", type="primary"):
                 
                 added_income = optimized['inclusion'] - baseline['inclusion']
                 added_tax = (optimized['fed_tax'] + optimized['nc_tax']) - (baseline['fed_tax'] + baseline['nc_tax'])
-                added_credit = optimized['credit'] - baseline['credit']
                 
-                if baseline['inclusion'] > 0:
-                    client_text = (
-                        f"Because your total scholarship (${box_5:,.0f}) was larger than your educational expenses (${total_qee:,.0f}), "
-                        f"standard tax software automatically reports the difference (${baseline['inclusion']:,.0f}) as taxable income. "
-                        f"If we stopped there, your total tax burden would be ${baseline['tax_burden']:,.0f}.<br><br>"
-                        "However, we used an IRS-approved strategy to lower your bill. We voluntarily reported an additional "
-                        f"${added_income:,.0f} of your scholarship as income. While this temporarily increased your taxes by "
-                        f"${added_tax:,.0f}, doing so unlocked a Lifetime Learning Credit of ${added_credit:,.0f}. That credit "
-                        f"completely paid for the tax increase and put an extra ${savings:,.0f} in your pocket!"
-                    )
-                else:
-                    client_text = (
-                        f"Normally, because your educational expenses (${total_qee:,.0f}) were higher than your scholarship (${box_5:,.0f}), "
-                        f"none of your scholarship would be taxed. Standard tax software would calculate your total tax burden as ${baseline['tax_burden']:,.0f}.<br><br>"
-                        "However, we used an IRS-approved strategy to lower your bill. We voluntarily reported "
-                        f"${added_income:,.0f} of your tax-free scholarship as taxable income. While this temporarily increased your taxes by "
-                        f"${added_tax:,.0f}, doing so unlocked a Lifetime Learning Credit of ${added_credit:,.0f}. That credit "
-                        f"completely paid for the tax increase and put an extra ${savings:,.0f} in your pocket!"
-                    )
+                client_text = (
+                    f"<b>Standard Tax Software Outcome:</b><br>"
+                    f"If we processed your education documents using standard default settings, your return would generate a Lifetime Learning Credit of ${baseline['credit']:,.0f} "
+                    f"and a total net tax burden of ${baseline['tax_burden']:,.0f}.<br><br>"
+                    f"<b>Tax-Aide Optimized Outcome:</b><br>"
+                    f"We applied an advanced, IRS-approved optimization strategy to your return. By voluntarily electing to report an additional ${added_income:,.0f} "
+                    f"of your scholarship as taxable income, we were able to unlock a larger Lifetime Learning Credit of ${optimized['credit']:,.0f}.<br><br>"
+                    f"<b>The Result:</b><br>"
+                    f"Even after accounting for the slightly higher base income tax, this strategy successfully lowered your overall tax bill to ${optimized['tax_burden']:,.0f}, "
+                    f"putting a net profit of ${savings:,.0f} directly back in your pocket!"
+                )
                 
                 st.markdown(f"<div style='font-size:1.05em; line-height:1.5;'>{client_text}</div>", unsafe_allow_html=True)
 
@@ -299,16 +335,21 @@ if st.button("Calculate Optimization", type="primary"):
             base_credit_str = f"-${baseline['credit']:,.0f}" if baseline['credit'] > 0 else "$0"
             opt_credit_str = f"-${optimized['credit']:,.0f}" if optimized['credit'] > 0 else "$0"
             
+            base_final_fed = max(0, baseline['fed_tax'] - baseline['credit'])
+            opt_final_fed = max(0, optimized['fed_tax'] - optimized['credit'])
+            
             ui_table = (
                 '<table class="ui-math-table">'
                 '<tr><th>Metric</th><th>Standard TaxSlayer Entry</th><th>After Optimization</th></tr>'
-                f'<tr><td>Tax-Free Scholarship</td><td>${baseline["ts_box_5_entry"]:,.0f}</td><td>${optimized["ts_box_5_entry"]:,.0f}</td></tr>'
-                f'<tr><td>Taxable Scholarship</td><td>${baseline["inclusion"]:,.0f}</td><td>${optimized["inclusion"]:,.0f}</td></tr>'
-                f'<tr style="background-color: rgba(128, 128, 128, 0.05);"><td>TOTAL SCHOLARSHIP</td><td>${box_5:,.0f}</td><td>${box_5:,.0f}</td></tr>'
+                f'<tr><td>Tax-Free 1098-T Scholarship</td><td>${baseline["ts_box_5_entry"]:,.0f}</td><td>${optimized["ts_box_5_entry"]:,.0f}</td></tr>'
+                f'<tr><td>Taxable 1098-T Scholarship</td><td>${baseline["inclusion"]:,.0f}</td><td>${optimized["inclusion"]:,.0f}</td></tr>'
+                f'<tr style="background-color: rgba(128, 128, 128, 0.05);"><td>TOTAL 1098-T SCHOLARSHIP</td><td>${box_5:,.0f}</td><td>${box_5:,.0f}</td></tr>'
                 f'<tr><td>Federal AGI</td><td>${baseline["agi"]:,.0f}</td><td>${optimized["agi"]:,.0f}</td></tr>'
                 f'<tr><td>Federal Tax</td><td>${baseline["fed_tax"]:,.0f}</td><td>${optimized["fed_tax"]:,.0f}</td></tr>'
-                f'<tr><td>State Tax</td><td>${baseline["nc_tax"]:,.0f}</td><td>${optimized["nc_tax"]:,.0f}</td></tr>'
                 f'<tr><td>Lifetime Learning Credit</td><td>{base_credit_str}</td><td>{opt_credit_str}</td></tr>'
+                f'<tr style="font-weight: bold; background-color: rgba(128, 128, 128, 0.05);"><td>Final Federal Tax</td><td>${base_final_fed:,.0f}</td><td>${opt_final_fed:,.0f}</td></tr>'
+                f'<tr><td>State Taxable Income</td><td>${baseline["nc_taxable"]:,.0f}</td><td>${optimized["nc_taxable"]:,.0f}</td></tr>'
+                f'<tr><td>State Tax</td><td>${baseline["nc_tax"]:,.0f}</td><td>${optimized["nc_tax"]:,.0f}</td></tr>'
                 f'<tr class="total-row"><td>TOTAL NET TAX BURDEN</td><td>${baseline["tax_burden"]:,.0f}</td><td>${optimized["tax_burden"]:,.0f}</td></tr>'
                 '</table>'
             )
@@ -338,13 +379,15 @@ if st.button("Calculate Optimization", type="primary"):
                 '<h3>The Math Breakdown</h3>\n'
                 '<table>\n'
                 '<tr><th>Metric</th><th>Standard TaxSlayer Entry</th><th>After Optimization</th></tr>\n'
-                f'<tr><td>Tax-Free Scholarship</td><td>${baseline["ts_box_5_entry"]:,.0f}</td><td>${optimized["ts_box_5_entry"]:,.0f}</td></tr>\n'
-                f'<tr><td>Taxable Scholarship</td><td>${baseline["inclusion"]:,.0f}</td><td>${optimized["inclusion"]:,.0f}</td></tr>\n'
-                f'<tr style="background-color:#fefefe"><td>TOTAL SCHOLARSHIP</td><td>${box_5:,.0f}</td><td>${box_5:,.0f}</td></tr>\n'
+                f'<tr><td>Tax-Free 1098-T Scholarship</td><td>${baseline["ts_box_5_entry"]:,.0f}</td><td>${optimized["ts_box_5_entry"]:,.0f}</td></tr>\n'
+                f'<tr><td>Taxable 1098-T Scholarship</td><td>${baseline["inclusion"]:,.0f}</td><td>${optimized["inclusion"]:,.0f}</td></tr>\n'
+                f'<tr style="background-color:#fefefe"><td>TOTAL 1098-T SCHOLARSHIP</td><td>${box_5:,.0f}</td><td>${box_5:,.0f}</td></tr>\n'
                 f'<tr><td>Federal AGI</td><td>${baseline["agi"]:,.0f}</td><td>${optimized["agi"]:,.0f}</td></tr>\n'
                 f'<tr><td>Federal Tax</td><td>${baseline["fed_tax"]:,.0f}</td><td>${optimized["fed_tax"]:,.0f}</td></tr>\n'
-                f'<tr><td>State Tax</td><td>${baseline["nc_tax"]:,.0f}</td><td>${optimized["nc_tax"]:,.0f}</td></tr>\n'
                 f'<tr><td>Lifetime Learning Credit</td><td>{base_credit_str}</td><td>{opt_credit_str}</td></tr>\n'
+                f'<tr style="font-weight: bold; background-color:#fefefe"><td>Final Federal Tax</td><td>${base_final_fed:,.0f}</td><td>${opt_final_fed:,.0f}</td></tr>\n'
+                f'<tr><td>State Taxable Income</td><td>${baseline["nc_taxable"]:,.0f}</td><td>${optimized["nc_taxable"]:,.0f}</td></tr>\n'
+                f'<tr><td>State Tax</td><td>${baseline["nc_tax"]:,.0f}</td><td>${optimized["nc_tax"]:,.0f}</td></tr>\n'
                 f'<tr style="background-color:#f4f6f8"><td>TOTAL NET TAX BURDEN</td><td>${baseline["tax_burden"]:,.0f}</td><td>${optimized["tax_burden"]:,.0f}</td></tr>\n'
                 '</table>\n'
                 f'<div class="summary">Optimization was successful and resulted in a ${savings:,.0f} net tax savings.</div>\n'
