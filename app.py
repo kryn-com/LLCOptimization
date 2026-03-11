@@ -45,6 +45,16 @@ div[data-testid="stNumberInputContainer"] {
     padding-right: 0px !important;
 }
 
+/* KILL BROWSER NATIVE +/- ARROWS */
+input[type="number"]::-webkit-inner-spin-button, 
+input[type="number"]::-webkit-outer-spin-button { 
+    -webkit-appearance: none; 
+    margin: 0; 
+}
+input[type="number"] {
+    -moz-appearance: textfield;
+}
+
 /* Custom UI Table Styling */
 .ui-math-table {
     width: 100%;
@@ -196,40 +206,42 @@ st.markdown("<div class='fake-header'>1. Education Documents</div>", unsafe_allo
 col1, col2, col3, col4 = st.columns(4)
 with col1:
     st.markdown("<div style='height: 3.5rem;'><b>1098-T Box 1</b><br><span style='font-size:0.9em; font-weight:normal;'><i>(Tuition Paid)</i></span></div>", unsafe_allow_html=True)
-    box_1_in = st.number_input("box_1", min_value=0.0, value=0.0, step=100.0, format="%.0f", label_visibility="collapsed")
+    box_1_in = st.number_input("box_1", min_value=0.0, value=0.0, step=1.0, format="%.0f", label_visibility="collapsed")
 with col2:
     st.markdown("<div style='height: 3.5rem;'><b>1098-T Box 5</b><br><span style='font-size:0.9em; font-weight:normal;'><i>(Total Scholarship)</i></span></div>", unsafe_allow_html=True)
-    box_5_in = st.number_input("box_5", min_value=0.0, value=0.0, step=100.0, format="%.0f", label_visibility="collapsed")
+    box_5_in = st.number_input("box_5", min_value=0.0, value=0.0, step=1.0, format="%.0f", label_visibility="collapsed")
 with col3:
     st.markdown("<div style='height: 3.5rem;'><b>Other Qualified Expenses</b><br><span style='font-size:0.9em; font-weight:normal;'><i>(Books, Supplies, etc.)</i></span></div>", unsafe_allow_html=True)
-    addl_qee_in = st.number_input("addl_qee", min_value=0.0, value=0.0, step=100.0, format="%.0f", label_visibility="collapsed")
+    addl_qee_in = st.number_input("addl_qee", min_value=0.0, value=0.0, step=1.0, format="%.0f", label_visibility="collapsed")
 with col4:
     st.markdown("<div style='height: 3.5rem;'><b>External Funding</b><br><span style='font-size:0.9em; font-weight:normal;'><i>(Taxable, NOT on 1098-T)</i></span></div>", unsafe_allow_html=True)
-    ext_funding_in = st.number_input("ext_funding", min_value=0.0, value=0.0, step=100.0, format="%.0f", label_visibility="collapsed")
+    ext_funding_in = st.number_input("ext_funding", min_value=0.0, value=0.0, step=1.0, format="%.0f", label_visibility="collapsed")
 
 st.markdown("<div class='fake-header'>2. TaxSlayer Current Status</div>", unsafe_allow_html=True)
 
-# The Workflow Toggle
+# The Workflow Toggle (Updated Text)
 entry_method = st.radio(
-    "How are you entering the data?",
-    ["Clean Slate (I have NOT entered the 1098-T or Funding into TaxSlayer yet)", 
-     "Reverse Engineer (TaxSlayer has already processed the 1098-T and Funding)"],
+    "Data Entry Status",
+    [
+        "Pre-Entry: Education data NOT yet in TaxSlayer", 
+        "Post-Entry: Education data ALREADY in TaxSlayer"
+    ],
     horizontal=False
 )
 
 col5, col6, col7, col8 = st.columns(4)
 with col5:
     st.markdown("<div style='height: 4.5rem;'><b>Federal AGI</b><br><span style='font-size:0.9em; font-weight:normal;'><i>(Form 1040, Line 11)</i></span></div>", unsafe_allow_html=True)
-    agi_in = st.number_input("agi", min_value=0.0, value=0.0, step=100.0, format="%.0f", label_visibility="collapsed")
+    agi_in = st.number_input("agi", min_value=0.0, value=0.0, step=1.0, format="%.0f", label_visibility="collapsed")
 with col6:
     st.markdown("<div style='height: 4.5rem;'><b>State Taxable Income</b><br><span style='font-size:0.9em; font-weight:normal;'><i>(NC D-400, Line 14)</i></span></div>", unsafe_allow_html=True)
-    nc_taxable_in = st.number_input("nc_taxable", min_value=0.0, value=0.0, step=100.0, format="%.0f", label_visibility="collapsed")
+    nc_taxable_in = st.number_input("nc_taxable", min_value=0.0, value=0.0, step=1.0, format="%.0f", label_visibility="collapsed")
 with col7:
-    if "Reverse Engineer" in entry_method:
+    if "Post-Entry" in entry_method:
         st.markdown("<div style='height: 4.5rem;'><b>Taxable Scholarship</b> <i>(Sch 1 Line 8r)</i><br><span style='font-size:0.85em; font-weight:normal;'><i>*Includes 1098-T + Funding*</i></span></div>", unsafe_allow_html=True)
-        line_8r_in = st.number_input("line_8r", min_value=0.0, value=0.0, step=100.0, format="%.0f", label_visibility="collapsed")
+        line_8r_in = st.number_input("line_8r", min_value=0.0, value=0.0, step=1.0, format="%.0f", label_visibility="collapsed")
     else:
-        st.markdown("<div style='height: 4.5rem; color:#888;'><b>Taxable Scholarship</b><br><span style='font-size:0.85em; font-weight:normal;'><i>(Hidden in Clean Slate Mode)</i></span></div>", unsafe_allow_html=True)
+        st.markdown("<div style='height: 4.5rem; color:#888;'><b>Taxable Scholarship</b><br><span style='font-size:0.85em; font-weight:normal;'><i>(Hidden in Pre-Entry Mode)</i></span></div>", unsafe_allow_html=True)
         line_8r_in = 0.0
 with col8:
     st.empty()
@@ -246,7 +258,7 @@ if st.button("Calculate Optimization", type="primary"):
     line_8r = int(math.floor(line_8r_in + 0.5)) if line_8r_in else 0
     
     # --- WORKFLOW TOGGLE LOGIC ---
-    if "Clean Slate" in entry_method:
+    if "Pre-Entry" in entry_method:
         # Funding is NOT in TaxSlayer yet. We must add it to construct the true baseline.
         base_agi_to_pass = agi + ext_funding
         
@@ -292,21 +304,22 @@ if st.button("Calculate Optimization", type="primary"):
                 
                 # Recombine the optimized 1098-T amount with the external funding for the final TaxSlayer entry
                 final_ts_entry = optimized['inclusion'] + ext_funding
-                funding_note = f"*(This combines the \${ext_funding:,.0f} funding with the \${optimized['inclusion']:,.0f} 1098-T shift)*" if ext_funding > 0 else "*(Overwrite any number TaxSlayer may have already put here)*"
+                funding_note = f"*(This combines the ${ext_funding:,.0f} funding with the ${optimized['inclusion']:,.0f} 1098-T shift)*" if ext_funding > 0 else "*(Overwrite any number TaxSlayer may have already put here)*"
                 
+                # HTML is used explicitly below to prevent markdown parsers from breaking on the $ symbol
                 instructions = (
-                    "**Step 1: Enter the Taxable Income**\n"
-                    "* Go to `Federal Section > Income > Other Income > Other Compensation > Scholarships and Grants`\n"
-                    f"* Enter exactly: **\${final_ts_entry:,.0f}**\n"
-                    f"  {funding_note}\n\n"
-                    "**Step 2: Enter the Education Credit**\n"
-                    "* Go to `Federal Section > Deductions > Credits > Education Credits`\n"
-                    "* On the 1098-T entry screen, enter these exact values:\n"
-                    f"* **Tuition Paid:** **\${box_1:,.0f}**\n"
-                    f"* **Grants and Scholarships:** **\${optimized['ts_box_5_entry']:,.0f}** *(This is the Tax-Free portion that remains)*\n"
-                    f"* **Other Qualified Expenses:** **\${addl_qee:,.0f}**\n"
+                    "<b>Step 1: Enter the Taxable Income</b><br>\n"
+                    "<ul><li>Go to <code>Federal Section > Income > Other Income > Other Compensation > Scholarships and Grants</code></li>\n"
+                    f"<li>Enter exactly: <b>${final_ts_entry:,.0f}</b><br>\n"
+                    f"<i>{funding_note}</i></li></ul>\n"
+                    "<b>Step 2: Enter the Education Credit</b><br>\n"
+                    "<ul><li>Go to <code>Federal Section > Deductions > Credits > Education Credits</code></li>\n"
+                    "<li>On the 1098-T entry screen, enter these exact values:</li>\n"
+                    f"<li><b>Tuition Paid:</b> <b>${box_1:,.0f}</b></li>\n"
+                    f"<li><b>Grants and Scholarships:</b> <b>${optimized['ts_box_5_entry']:,.0f}</b> <i>(This is the Tax-Free portion that remains)</i></li>\n"
+                    f"<li><b>Other Qualified Expenses:</b> <b>${addl_qee:,.0f}</b></li></ul>\n"
                 )
-                st.markdown(instructions)
+                st.markdown(instructions, unsafe_allow_html=True)
                 
             with c2:
                 st.markdown("<h3 style='margin-top:0;'>🗣️ Explanation for the Client</h3>", unsafe_allow_html=True)
