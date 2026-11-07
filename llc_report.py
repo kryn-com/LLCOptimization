@@ -1,5 +1,5 @@
 """llc_report.py - side-by-side comparison, TaxSlayer entry steps, and explanations (no Streamlit)."""
-from llc_engine import STATES, FED
+from llc_engine import STATES
 
 
 NY_NOTICE = ("Do not use this tool for New York City or Yonkers residents. "
@@ -14,19 +14,18 @@ def neg_money(v):
     return f"-${v:,.0f}" if v > 0 else "$0"
 
 
-def marginal_rate(taxable, brackets):
-    """Rate of the bracket that the last dollar of taxable income falls in."""
-    rate = brackets[0][1]
-    for floor, r in brackets:
-        if taxable > floor:
-            rate = r
-    return rate
+def abbr(state):
+    """Short label used in table rows (NC, GA, ... or 'State' for the flat-rate option)."""
+    return STATES[state].get("abbr", state)
+
+
+def client_name(state):
+    """Name used inside client-facing sentences."""
+    return STATES[state].get("client_name", STATES[state]["name"])
 
 
 def marginal_rates(optimized, state, year):
-    fed = marginal_rate(optimized["fed_taxable"], FED[year]["brackets"])
-    st = marginal_rate(optimized["state_taxable"], STATES[state]["years"][year]["brackets"])
-    return fed, st
+    return optimized["fed_marginal"], optimized["state_marginal"]
 
 
 def process_rows(res, box_1, addl_qee, box_5, ext_funding, state, year):
@@ -46,8 +45,8 @@ def process_rows(res, box_1, addl_qee, box_5, ext_funding, state, year):
         ("Qualified expenses for the credit", money(res["expenses_to_claim"]), False),
         ("Lifetime Learning Credit", neg_money(res["credit"]), False),
         ("Federal tax after credit", money(res["final_fed_tax"]), True),
-        (f"{state} taxable income ({st['taxable_label']})", money(res["state_taxable"]), False),
-        (f"{state} income tax", money(res["state_tax"]), True),
+        (f"{abbr(state)} taxable income ({st['taxable_label']})", money(res["state_taxable"]), False),
+        (f"{abbr(state)} income tax", money(res["state_tax"]), True),
         ("Modeled income tax (federal + state)", money(res["tax_burden"]), True),
     ]
     return rows
@@ -113,14 +112,14 @@ def tie_out(opt, state):
         ("Federal taxable income", money(opt["fed_taxable"])),
         ("Federal tax before credits", money(opt["fed_tax"])),
         ("Lifetime Learning Credit (Form 8863 / Schedule 3)", money(opt["credit"])),
-        (f"{state} taxable income ({st['taxable_label']})", money(opt["state_taxable"])),
-        (f"{state} income tax ({st['tax_label']})", money(opt["state_tax"])),
+        (f"{abbr(state)} taxable income ({st['taxable_label']})", money(opt["state_taxable"])),
+        (f"{abbr(state)} income tax ({st['tax_label']})", money(opt["state_tax"])),
     ]
 
 
 def client_explanation(baseline, optimized, g, box_5, state, year):
     """Plain-language summary. Shows only the change from the strategy, not whole-return totals."""
-    name = STATES[state]["name"]
+    name = client_name(state)
     added = g["added_income"]
     extra_tax = g["fed_increase"] + g["state_increase"]
     fed_m, st_m = marginal_rates(optimized, state, year)
@@ -150,7 +149,7 @@ def plain_text_report(baseline, optimized, g, box_1, addl_qee, box_5, ext_fundin
     lines += [f"  {k}: {v}" for k, v in tie_out(optimized, state)]
     lines += ["", f"NET GAIN TO TAXPAYER: {money(g['net_gain'])}",
               f"  Credit gain {money(g['credit_gain'])}, extra federal tax {money(g['fed_increase'])}, "
-              f"extra {state} tax {money(g['state_increase'])}"]
+              f"extra {abbr(state)} tax {money(g['state_increase'])}"]
     if state == "NY":
         lines += ["", "NOTE: " + NY_NOTICE]
     return "\n".join(lines)
@@ -158,7 +157,9 @@ def plain_text_report(baseline, optimized, g, box_1, addl_qee, box_5, ext_fundin
 
 def html_report(baseline, optimized, g, box_1, addl_qee, box_5, ext_funding, state, year):
     """Client-facing report: simple explanation and the savings math only."""
-    name = STATES[state]["name"]
+    named = state != "FLAT"
+    title_state = f" - {STATES[state]['name']}" if named else ""
+    did_state = f" ({STATES[state]['name']})" if named else ""
     note = f"<p><b>Note:</b> {NY_NOTICE}</p>" if state == "NY" else ""
     return f"""<!DOCTYPE html><html><head><meta charset="utf-8"><title>Education Credit Savings</title>
 <style>
@@ -167,8 +168,8 @@ h2{{color:#2c3e50;border-bottom:2px solid #eee;padding-bottom:5px}} h3{{color:#3
 table{{width:100%;border-collapse:collapse;margin:6px 0}} td{{border:1px solid #ddd;padding:6px 10px}}
 td:last-child{{text-align:right}}
 </style></head><body>
-<h2>Education Credit Savings - {name} - Tax Year {year}</h2>
-<h3>What we did ({name})</h3><div>{client_explanation(baseline, optimized, g, box_5, state, year)}</div>
+<h2>Education Credit Savings{title_state} - Tax Year {year}</h2>
+<h3>What we did{did_state}</h3><div>{client_explanation(baseline, optimized, g, box_5, state, year)}</div>
 <h3>How the savings add up</h3>{gain_html(g, "m")}
 {note}
 </body></html>"""

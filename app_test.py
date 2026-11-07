@@ -16,6 +16,7 @@ div[data-testid="stNumberInputContainer"]::before {
     content: "$"; position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
     color: #888; font-size: 1.15rem; z-index: 1;
 }
+div[data-testid="stSlider"] div[data-testid="stNumberInputContainer"]::before { content: ""; }
 button[aria-label="Step up"], button[aria-label="Step down"], button[aria-label="Clear input"] { display: none !important; }
 div[data-testid="stNumberInputContainer"] { padding-right: 0px !important; }
 input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
@@ -44,15 +45,29 @@ def field(col, title, subtitle, key, height="3.5rem"):
                                label_visibility="collapsed")
 
 
+def state_label(key):
+    return "Flat-Rate (other state)" if key == "FLAT" else f"{key} - {STATES[key]['name']}"
+
+
 st.title("🎓 Lifetime Learning Credit Optimizer")
 
+flat_rate = None
+flat_std = 0
 with st.sidebar:
     st.header("Settings")
     year = st.selectbox("Tax Year", [2026, 2025], index=0)
     state = st.selectbox("State", list(STATES.keys()), index=list(STATES.keys()).index(DEFAULT_STATE),
-                         format_func=lambda k: f"{k} - {STATES[k]['name']}")
+                         format_func=state_label)
+    if state == "FLAT":
+        flat_rate = st.slider("Flat state tax rate (%)", min_value=0.0, max_value=15.0, value=5.0,
+                              step=0.01, format="%.2f") / 100
+        flat_std = rnd(st.number_input(
+            "State standard deduction", min_value=0.0, value=0.0, step=100.0, format="%.0f",
+            help="Optional. Only used when State Taxable Income is $0, to estimate how much of the added "
+                 "scholarship is covered by the unused deduction. Leave at $0 if unsure."))
+        st.caption("For states with a flat income tax. Local or city income taxes are not included.")
     st.caption("Filing status: Single")
-    st.caption(rate_summary(state, year))
+    st.caption(rate_summary(state, year, flat_rate))
 
 if state == "NY":
     st.warning(f"**{NY_NOTICE}**")
@@ -81,7 +96,10 @@ else:
                     "<span style='font-size:0.85em;'><i>(Hidden in Pre-Entry Mode)</i></span></div>",
                     unsafe_allow_html=True)
     line_8r_in = 0.0
-sched_1a_in = field(c8, "Schedule 1-A Deductions", "(Tips, overtime, etc. - optional)", "sched_1a", "4.5rem")
+sched_1a_in = field(c8, "Schedule 1-A Deductions", "(Only if applicable - tips/overtime)", "sched_1a", "4.5rem")
+st.caption("Schedule 1-A applies only if the taxpayer has qualified tips or overtime income "
+           "(the schedule also covers car-loan interest and the senior deduction). "
+           "Enter the total deduction from Schedule 1-A, or leave $0 if there is none.")
 
 if st.button("Calculate Optimization", type="primary"):
     box_1, box_5, addl_qee = rnd(box_1_in), rnd(box_5_in), rnd(addl_qee_in)
@@ -93,9 +111,9 @@ if st.button("Calculate Optimization", type="primary"):
         st.stop()
 
     base_agi, base_state, actual_8r = prepare_baseline("post" if post else "pre", agi, state_taxable,
-                                                      ext_funding, line_8r, year, state)
+                                                      ext_funding, line_8r, year, state, flat_std)
     baseline, optimized = optimize_scholarship(box_1, addl_qee, box_5, base_agi, base_state, actual_8r,
-                                               year, state, sched_1a)
+                                               year, state, sched_1a, flat_rate, flat_std)
     g = gain_breakdown(baseline, optimized)
     savings = g["net_gain"]
 
@@ -131,7 +149,8 @@ if st.button("Calculate Optimization", type="primary"):
             tie_html = "".join(f"<tr><td>{k}</td><td>{v}</td></tr>" for k, v in tie_out(optimized, state))
             st.markdown(f"<table class='ui-math-table'>{tie_html}</table>", unsafe_allow_html=True)
         with b:
-            st.markdown(f"<h3 style='margin-top:0;'>🗣️ Explanation for the Client - {STATES[state]['name']}</h3>",
+            heading = "" if state == "FLAT" else f" - {STATES[state]['name']}"
+            st.markdown(f"<h3 style='margin-top:0;'>🗣️ Explanation for the Client{heading}</h3>",
                         unsafe_allow_html=True)
             st.markdown(f"<div style='font-size:1.05em;line-height:1.5;'>"
                         f"{client_explanation(baseline, optimized, g, box_5, state, year)}</div>", unsafe_allow_html=True)
