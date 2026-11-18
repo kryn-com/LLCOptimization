@@ -3,18 +3,18 @@
 Streamlit tool that finds how much 1098-T scholarship to report as taxable income so a single filer gets the best
 combined federal + state result from the Lifetime Learning Credit (LLC). Output is organized for entry into TaxSlayer.
 
-Last updated: November 7, 2026
+Last updated: November 17, 2026
 
 ## 1. Repository layout
 
 | File | Purpose |
 |---|---|
 | `app.py` | LIVE app (old version, until promoted) |
-| `app_test.py` | TEST app (new multi-year, multi-state, flat-rate version; shared for review) |
+| `app_test.py` | TEST app (new multi-year, multi-state, shared for review) |
 | `app_old.py` | Backup of the earlier version |
 | `llc_engine.py` | Tax tables, tax functions, optimizer (no Streamlit) |
 | `llc_report.py` | Side-by-side rows, savings table, TaxSlayer entry steps, tie-out, client text, downloads |
-| `test_llc_engine.py`, `test_llc_report.py` | pytest tests (36 at last run) |
+| `test_llc_engine.py`, `test_llc_report.py` | pytest tests (30 at last run) |
 | `requirements.txt` | Streamlit Cloud dependencies (keep pytest out of it) |
 | `NOTES.md` | This file |
 
@@ -37,7 +37,7 @@ also sits in the home folder). Run `cd LLCOptimization` and try again.
 - Single filers only. LLC only (no AOTC).
 - Federal + state income tax. No city taxes. New York shows a warning not to use the tool for NYC or Yonkers residents.
 - Tax years 2026 (default) and 2025.
-- States: NC (default), GA, NM, NY, plus a Flat-Rate option at the bottom of the list (see section 5).
+- States: NC (default), GA, NM, NY.
 - Results compare standard TaxSlayer processing to the optimized amount. Totals are "modeled income tax" only
   (not the whole return), so the reliable number is the difference (net savings).
 
@@ -50,7 +50,8 @@ also sits in the home folder). Run `cd LLCOptimization` and try again.
    need no special handling.
 3. LLC = 20% of qualified expenses (max $10,000 counted = $2,000), reduced by the MAGI phase-out
    ($80,000-$90,000, single, not indexed), and limited to federal tax (nonrefundable).
-4. Federal tax uses the IRS $50 tax-table midpoint below $100,000 taxable income.
+4. Federal tax uses the IRS Tax Table midpoint: $25 bands under $3,000 and $50 bands from 
+   $3,000 to $100,000.
 5. State tax is calibrated from the State Taxable Income entered from TaxSlayer, so state-specific additions and
    subtractions already in the software (for example Georgia's tips/overtime exclusions) carry through.
    If the entered state taxable income is $0, the tool assumes no state adjustments.
@@ -86,17 +87,10 @@ It pays off when the combined marginal federal + state rate on the extra income 
 Federal 2026 figures: IRS Rev. Proc. 2025-32. NM 2025 tax-table examples (12,050 -> 292; 25,350 -> 815; 49,950 -> 1,939)
 and the over-$100,000 base amounts ($4,356 and $9,746) come from the official 2025 NM Tax Rate Table.
 
-### Flat-Rate option
-
-- For other states with a flat income tax. Choosing "Flat-Rate (other state)" shows a sidebar slider for the rate
-  (0.00% to 15.00%, steps of 0.01%, starts at 5.00%).
-- A second sidebar box, "State standard deduction", is optional. It only matters when State Taxable Income is $0
-  (it estimates how much added scholarship the unused deduction covers). When State Taxable Income is above $0 the
-  deduction cancels out. Leave at $0 if unsure (slightly overstates state tax in low-income cases).
-- Output says "State" and "federal and state income tax" instead of a state name. Local or city income taxes are not included.
-- In the code, the Flat-Rate entry is the `FLAT` placeholder in `STATES`; the app passes the rate and deduction at run time.
 
 ## 6. Open items - revisit when documents are finalized
+
+These 2026 items are also listed in `llc_engine.py` (search for `CONFIRM-2026`).
 
 | Item | Current assumption | Status |
 |---|---|---|
@@ -117,7 +111,7 @@ and the over-$100,000 base amounts ($4,356 and $9,746) come from the official 20
 - Federal deductions other than the standard deduction and the optional Schedule 1-A amount are not modeled.
 - Georgia's tips/overtime exclusions are picked up through the State Taxable Income entry,
   except when that entry is $0 (can overstate state tax by up to about $87 per $1,750 excluded).
-- Flat-Rate option: flat-tax states only, no local taxes, and the rate and any deduction are user-supplied (not verified by the tool).
+
 
 ## 8. Test cases (2026, Pre-Entry)
 
@@ -129,10 +123,7 @@ Inputs: Box 1 $12,000; Box 5 $8,000; other expenses $0; external funding $0; AGI
 | GA | 13,000 | 0 | $4,698 | $800 -> $1,740 | $158 |
 | NC with tips deduction | 15,250 | 3,000 | $888 | $800 -> $978 | $57 |
 | NC with large deduction | 15,250 | 12,000 | none | $0 -> $0 | $0 (no optimization) |
-| Flat-Rate at 4.50% (deduction $0 or $12,750) | 15,250 | 0 | $4,693 | $800 -> $1,739 | $180 |
-| Flat-Rate at 3.99%, deduction $12,750 | 15,250 | 0 | $4,698 | $800 -> $1,740 | $204 (matches NC) |
 
-For the 4.50% Flat-Rate case the standard-column state tax is $686.
 
 Hand check (NC, no deduction): AGI 28,000 - 16,100 = 11,900 taxable; table midpoint 11,925 x 10% = 1,193 federal tax;
 15,250 x 3.99% = 608 NC tax; credit 20% x $4,000 = $800.
@@ -169,3 +160,4 @@ Plan: do not promote until several real returns, including NC and one other stat
 5. Update the tax-year choices in the sidebar of the app file.
 6. Add tests for the new constants and run the full suite.
 7. Test against real returns before promoting.
+8. Update the `CONFIRM-2026` block at the top of `llc_engine.py` (mark items VERIFIED with the date and source).

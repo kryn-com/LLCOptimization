@@ -15,7 +15,7 @@ def neg_money(v):
 
 
 def abbr(state):
-    """Short label used in table rows (NC, GA, ... or 'State' for the flat-rate option)."""
+    """Short label used in table rows (NC, GA, NM, NY)."""
     return STATES[state].get("abbr", state)
 
 
@@ -157,9 +157,8 @@ def plain_text_report(baseline, optimized, g, box_1, addl_qee, box_5, ext_fundin
 
 def html_report(baseline, optimized, g, box_1, addl_qee, box_5, ext_funding, state, year):
     """Client-facing report: simple explanation and the savings math only."""
-    named = state != "FLAT"
-    title_state = f" - {STATES[state]['name']}" if named else ""
-    did_state = f" ({STATES[state]['name']})" if named else ""
+    title_state = f" - {STATES[state]['name']}"
+    did_state = f" ({STATES[state]['name']})"
     note = f"<p><b>Note:</b> {NY_NOTICE}</p>" if state == "NY" else ""
     return f"""<!DOCTYPE html><html><head><meta charset="utf-8"><title>Education Credit Savings</title>
 <style>

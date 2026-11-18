@@ -5,6 +5,34 @@ import math
 DEFAULT_YEAR = 2026
 DEFAULT_STATE = "NC"
 
+# =====================================================================================================
+# 2026 DATA YEAR - ITEMS STILL TO CONFIRM  (search this file for "CONFIRM-2026")
+# Many 2026 state forms and instructions were not final when these numbers were entered.
+# When an item is verified, change its status to VERIFIED with the date and the source document.
+#
+# CONFIRM-2026 | Federal      | VERIFIED: standard deduction and brackets (IRS Rev. Proc. 2025-32).
+#                             | Tax Table bands: $25 under $3,000, $50 to $100,000 (midpoint method).
+# CONFIRM-2026 | NC           | 2026 standard deduction $12,750 and rate 3.99% - confirm against the final
+#                             | 2026 D-400 instructions. Form lines 14 (taxable income) and 15 (tax) are
+#                             | carried over from 2025.
+# CONFIRM-2026 | GA           | Rate 4.99% and standard deduction $15,000 - confirm with the Georgia DOR.
+#                             | Form 500 line numbers are not used (labels are generic). Assumes
+#                             | tax = taxable income x rate (no tax table).
+# CONFIRM-2026 | NM           | 2026 rate table not yet available. Assumes $100 bands below $100,000 and the
+#                             | 2025 base amounts ($4,356 and $9,746) above it. 2026 standard deduction set to
+#                             | the federal $16,100. PIT-1 lines 17 and 18 carried over from 2025.
+# CONFIRM-2026 | NY           | 2026 rates and the tax-table method are not verified. Assumes $50 bands below
+#                             | $65,000 and the bracket formula above. The table also requires NY AGI of
+#                             | $107,650 or less (2025 figure); that test is not modeled. IT-201 lines 37 and
+#                             | 39 carried over from 2025. Not for NYC or Yonkers residents.
+# CONFIRM-2026 | TaxSlayer    | Menu paths (Scholarships and Grants under Other Compensation; 1098-T
+#                             | education credit screen) - confirm in the 2026 software.
+# CONFIRM-2026 | Real returns | No real 2026 returns have been compared to TaxSlayer yet.
+#
+# Not modeled (any year): local/city income taxes, state credits and rebates, EITC and ACA premium
+# credit interactions, dependent students, deductions other than the standard deduction and Schedule 1-A.
+# =====================================================================================================
+
 
 FED = {
     2025: {"std": 15750, "brackets": [(0, .10), (11925, .12), (48475, .22), (103350, .24),
@@ -23,7 +51,6 @@ NM_BRACKETS = [(0, .015), (5500, .032), (16500, .043), (33500, .047), (66500, .0
 
 # band / table_limit: state tax tables use the midpoint of a band while taxable income < table_limit.
 # GA labels are generic until the 2026 Form 500 line numbers are published.
-# FLAT is a placeholder: the app supplies the rate and standard deduction at run time (see year_cfg).
 STATES = {
     "NC": {"name": "North Carolina", "taxable_label": "NC Form D-400, Line 14", "tax_label": "NC Form D-400, Line 15",
            "band": None, "table_limit": 0,
@@ -43,11 +70,6 @@ STATES = {
            "band": 50, "table_limit": 65000,
            "years": {2025: {"std": 8000, "brackets": NY_2025},
                      2026: {"std": 8000, "brackets": NY_2026}}},
-    "FLAT": {"name": "Flat-Rate State", "abbr": "State", "client_name": "state",
-             "taxable_label": "your state return, taxable income", "tax_label": "your state return, income tax",
-             "band": None, "table_limit": 0,
-             "years": {2025: {"std": 0, "brackets": [(0, 0.0)]},
-                       2026: {"std": 0, "brackets": [(0, 0.0)]}}},
 }
 
 
@@ -59,10 +81,8 @@ def irs_round(val):
     return int(math.floor(val + 0.5))
 
 
-def year_cfg(state, year, flat_rate=None, flat_std=0):
-    """Standard deduction and brackets for a state/year. FLAT uses the rate and deduction supplied by the user."""
-    if state == "FLAT":
-        return {"std": flat_std or 0, "brackets": [(0, flat_rate or 0.0)]}
+def year_cfg(state, year):
+    """Standard deduction and brackets for a state/year."""
     return STATES[state]["years"][year]
 
 
@@ -98,7 +118,7 @@ def fed_tax(taxable, year):
         ti = math.floor(taxable / 50) * 50 + 25
     return irs_round(bracket_tax(ti, FED[year]["brackets"]))
 
-def state_tax(taxable, state, year, flat_rate=None):
+def state_tax(taxable, state, year):
     cfg = STATES[state]
     if taxable <= 0:
         return 0
@@ -109,7 +129,7 @@ def state_tax(taxable, state, year, flat_rate=None):
         for floor, base, rate in reversed(cfg["over_schedule"]):
             if taxable >= floor:
                 return irs_round(base + (taxable - floor) * rate)
-    return irs_round(bracket_tax(ti, year_cfg(state, year, flat_rate)["brackets"]))
+    return irs_round(bracket_tax(ti, year_cfg(state, year)["brackets"]))
 
 
 def phaseout_ratio(agi):
@@ -120,9 +140,9 @@ def phaseout_ratio(agi):
     return round((PHASEOUT_END - agi) / (PHASEOUT_END - PHASEOUT_START), 3)
 
 
-def rate_summary(state, year, flat_rate=None):
-    rates = [r for _, r in year_cfg(state, year, flat_rate)["brackets"]]
-    label = "State" if state == "FLAT" else STATES[state]["name"]
+def rate_summary(state, year):
+    rates = [r for _, r in year_cfg(state, year)["brackets"]]
+    label = STATES[state]["name"]
     if len(rates) == 1:
         return f"{label} income tax rate: {rates[0]*100:.2f}% (flat)"
     return f"{label} income tax rates: {min(rates)*100:.2f}% to {max(rates)*100:.2f}% (progressive)"
@@ -130,11 +150,10 @@ def rate_summary(state, year, flat_rate=None):
 
 def optimize_scholarship(box_1_tuition, additional_qee, box_5_scholarship, tso_current_agi,
                          tso_state_taxable, actual_1098t_8r, year=DEFAULT_YEAR, state=DEFAULT_STATE,
-                         sched_1a=0, flat_rate=None, flat_std=0):
-    """sched_1a: federal Schedule 1-A deductions (tips, overtime, etc.) that reduce taxable income but not AGI.
-    flat_rate / flat_std: used only when state == "FLAT" (rate as a fraction, e.g. 0.045)."""
+                         sched_1a=0):
+    """sched_1a: federal Schedule 1-A deductions (tips, overtime, etc.) that reduce taxable income but not AGI."""
     fed_std = FED[year]["std"]
-    ycfg = year_cfg(state, year, flat_rate, flat_std)
+    ycfg = year_cfg(state, year)
     st_std = ycfg["std"]
     clean_agi = tso_current_agi - actual_1098t_8r
     clean_state_taxable = max(0, tso_state_taxable - actual_1098t_8r)
@@ -147,7 +166,7 @@ def optimize_scholarship(box_1_tuition, additional_qee, box_5_scholarship, tso_c
         fed_taxable = irs_round(max(0, agi - fed_std - sched_1a))
         f_tax = fed_tax(fed_taxable, year)
         s_taxable = irs_round(max(0, agi - st_std + state_adj))
-        s_tax = state_tax(s_taxable, state, year, flat_rate)
+        s_tax = state_tax(s_taxable, state, year)
         tax_free_sch = max(0, box_5_scholarship - inclusion)
         qualified = max(0, total_qee - tax_free_sch)
         tentative = min(qualified, LLC_EXPENSE_CAP) * LLC_RATE
@@ -187,8 +206,8 @@ def optimize_scholarship(box_1_tuition, additional_qee, box_5_scholarship, tso_c
     return baseline, optimized
 
 
-def prepare_baseline(mode, agi, state_taxable, ext_funding, line_8r, year, state, flat_std=0):
-    st_std = year_cfg(state, year, None, flat_std)["std"]
+def prepare_baseline(mode, agi, state_taxable, ext_funding, line_8r, year, state):
+    st_std = year_cfg(state, year)["std"]
     if mode == "pre":
         base_agi = agi + ext_funding
         adj = state_taxable - (agi - st_std) if state_taxable > 0 else 0
