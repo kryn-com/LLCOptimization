@@ -93,7 +93,7 @@ def test_phaseout():
 def test_credit_never_exceeds_tax_and_cap_all_states():
     for year in (2025, 2026):
         for state in STATES:
-            b, o = optimize_scholarship(13552, 0, 14235, 3000, 0, 0, year, state, flat_rate=0.05)
+            b, o = optimize_scholarship(13552, 0, 14235, 3000, 0, 0, year, state)
             for r in (b, o):
                 assert 0 <= r["credit"] <= min(2000, r["fed_tax"])
             assert o["net_position"] >= b["net_position"]
@@ -143,47 +143,13 @@ def test_rate_summary_georgia():
     assert rate_summary("GA", 2026) == "Georgia income tax rate: 4.99% (flat)"
 
 
-# ---- flat-rate option ----
-
-def test_flat_is_last_in_state_list():
-    assert list(STATES.keys())[-1] == "FLAT"
-
-
-def test_flat_rate_summary_uses_slider_value():
-    assert rate_summary("FLAT", 2026, 0.0450) == "State income tax rate: 4.50% (flat)"
-
-
-def test_flat_matches_equivalent_named_state():
-    """A flat 3.99% with a $12,750 deduction must reproduce NC 2026 exactly."""
-    args = (12000, 0, 8000, 28000, 15250, 0)
-    nc = optimize_scholarship(*args, year=2026, state="NC")
-    fl = optimize_scholarship(*args, year=2026, state="FLAT", flat_rate=.0399, flat_std=12750)
-    for i in (0, 1):
-        for k in ("inclusion", "credit", "fed_tax", "state_taxable", "state_tax", "net_position"):
-            assert nc[i][k] == fl[i][k]
-
-
-def test_flat_deduction_cancels_when_state_taxable_is_known():
-    args = (12000, 0, 8000, 28000, 15250, 0)
-    a = optimize_scholarship(*args, year=2026, state="FLAT", flat_rate=.05, flat_std=0)
-    b = optimize_scholarship(*args, year=2026, state="FLAT", flat_rate=.05, flat_std=9000)
-    assert a[1]["state_taxable"] == b[1]["state_taxable"]
-    assert a[1]["inclusion"] == b[1]["inclusion"]
-
-
-def test_flat_deduction_shelters_income_when_state_taxable_is_zero():
-    """With $0 state taxable income, a larger entered deduction means less added state tax."""
-    args = (12000, 0, 8000, 6000, 0, 0)
-    _, none = optimize_scholarship(*args, year=2026, state="FLAT", flat_rate=.05, flat_std=0)
-    _, big = optimize_scholarship(*args, year=2026, state="FLAT", flat_rate=.05, flat_std=10000)
-    assert big["state_tax"] <= none["state_tax"]
-
-
-def test_flat_zero_rate_adds_no_state_tax():
-    b, o = optimize_scholarship(12000, 0, 8000, 28000, 15250, 0, 2026, "FLAT", flat_rate=0.0)
-    assert b["state_tax"] == 0 and o["state_tax"] == 0
-
-
 def test_marginal_rates_reported():
     _, o = optimize_scholarship(12000, 0, 8000, 28000, 15250, 0, 2026, "NC")
     assert o["fed_marginal"] == .12 and o["state_marginal"] == .0399
+
+
+def test_fed_tax_uses_25_dollar_bands_under_3000():
+    from llc_engine import fed_tax
+    assert fed_tax(2960, 2026) == 296   # band 2,950-2,975, midpoint 2,962.5
+    assert fed_tax(2990, 2026) == 299   # band 2,975-3,000, midpoint 2,987.5
+    assert fed_tax(3010, 2026) == 303   # $50 band 3,000-3,050, midpoint 3,025

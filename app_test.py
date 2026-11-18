@@ -46,28 +46,18 @@ def field(col, title, subtitle, key, height="3.5rem"):
 
 
 def state_label(key):
-    return "Flat-Rate (other state)" if key == "FLAT" else f"{key} - {STATES[key]['name']}"
+    return f"{key} - {STATES[key]['name']}"
 
 
 st.title("🎓 Lifetime Learning Credit Optimizer")
 
-flat_rate = None
-flat_std = 0
 with st.sidebar:
     st.header("Settings")
     year = st.selectbox("Tax Year", [2026, 2025], index=0)
     state = st.selectbox("State", list(STATES.keys()), index=list(STATES.keys()).index(DEFAULT_STATE),
                          format_func=state_label)
-    if state == "FLAT":
-        flat_rate = st.slider("Flat state tax rate (%)", min_value=0.0, max_value=15.0, value=5.0,
-                              step=0.01, format="%.2f") / 100
-        flat_std = rnd(st.number_input(
-            "State standard deduction", min_value=0.0, value=0.0, step=100.0, format="%.0f",
-            help="Optional. Only used when State Taxable Income is $0, to estimate how much of the added "
-                 "scholarship is covered by the unused deduction. Leave at $0 if unsure."))
-        st.caption("For states with a flat income tax. Local or city income taxes are not included.")
     st.caption("Filing status: Single")
-    st.caption(rate_summary(state, year, flat_rate))
+    st.caption(rate_summary(state, year))
 
 if state == "NY":
     st.warning(f"**{NY_NOTICE}**")
@@ -111,9 +101,9 @@ if st.button("Calculate Optimization", type="primary"):
         st.stop()
 
     base_agi, base_state, actual_8r = prepare_baseline("post" if post else "pre", agi, state_taxable,
-                                                      ext_funding, line_8r, year, state, flat_std)
+                                                      ext_funding, line_8r, year, state)
     baseline, optimized = optimize_scholarship(box_1, addl_qee, box_5, base_agi, base_state, actual_8r,
-                                               year, state, sched_1a, flat_rate, flat_std)
+                                               year, state, sched_1a)
     g = gain_breakdown(baseline, optimized)
     savings = g["net_gain"]
 
@@ -149,7 +139,7 @@ if st.button("Calculate Optimization", type="primary"):
             tie_html = "".join(f"<tr><td>{k}</td><td>{v}</td></tr>" for k, v in tie_out(optimized, state))
             st.markdown(f"<table class='ui-math-table'>{tie_html}</table>", unsafe_allow_html=True)
         with b:
-            heading = "" if state == "FLAT" else f" - {STATES[state]['name']}"
+            heading = f" - {STATES[state]['name']}"
             st.markdown(f"<h3 style='margin-top:0;'>🗣️ Explanation for the Client{heading}</h3>",
                         unsafe_allow_html=True)
             st.markdown(f"<div style='font-size:1.05em;line-height:1.5;'>"
