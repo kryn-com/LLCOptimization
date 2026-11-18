@@ -49,7 +49,7 @@ def state_label(key):
     return f"{key} - {STATES[key]['name']}"
 
 
-st.title("🎓 Lifetime Learning Credit Optimizer")
+st.title("🎓 Jim's Lifetime Learning Credit Optimizer")
 
 with st.sidebar:
     st.header("Settings")
