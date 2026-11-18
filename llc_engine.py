@@ -83,13 +83,20 @@ def marginal_rate(taxable, brackets):
             rate = r
     return rate
 
-
 def fed_tax(taxable, year):
+    """Federal tax the way the IRS Tax Table computes it (below $100,000 it uses the midpoint of a band).
+    Bands are $25 wide under $3,000 and $50 wide from $3,000 to $100,000.
+    The first rows under $25 are narrower still; ignored here (difference is $1 at most).
+    """
     if taxable <= 0:
         return 0
-    ti = math.floor(taxable / 50) * 50 + 25 if taxable < 100000 else taxable
+    if taxable >= 100000:
+        ti = taxable
+    elif taxable < 3000:
+        ti = math.floor(taxable / 25) * 25 + 12.5
+    else:
+        ti = math.floor(taxable / 50) * 50 + 25
     return irs_round(bracket_tax(ti, FED[year]["brackets"]))
-
 
 def state_tax(taxable, state, year, flat_rate=None):
     cfg = STATES[state]

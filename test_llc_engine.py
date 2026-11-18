@@ -187,3 +187,10 @@ def test_flat_zero_rate_adds_no_state_tax():
 def test_marginal_rates_reported():
     _, o = optimize_scholarship(12000, 0, 8000, 28000, 15250, 0, 2026, "NC")
     assert o["fed_marginal"] == .12 and o["state_marginal"] == .0399
+
+
+def test_fed_tax_uses_25_dollar_bands_under_3000():
+    from llc_engine import fed_tax
+    assert fed_tax(2960, 2026) == 296   # band 2,950-2,975, midpoint 2,962.5
+    assert fed_tax(2990, 2026) == 299   # band 2,975-3,000, midpoint 2,987.5
+    assert fed_tax(3010, 2026) == 303   # $50 band 3,000-3,050, midpoint 3,025
